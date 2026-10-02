@@ -3,11 +3,15 @@ name: Daily Check-in Batch
 on:
   schedule:
     # 6:00 PM in Australia/Sydney, covering both DST states since cron here is fixed
-    # UTC. run-checkin-final-scheduled.js checks local time and no-ops on whichever
+    # UTC. The "Check if it's ~6pm" step below skips the rest of the job on whichever
     # of these two doesn't actually correspond to 6pm right now.
     - cron: '0 7 * * *'  # 6:00 PM AEDT (UTC+11)
     - cron: '0 8 * * *'  # 6:00 PM AEST (UTC+10)
   workflow_dispatch: {}  # manual "Run workflow" button, usable from the GitHub mobile app
+
+permissions:
+  contents: read
+  issues: write  # lets the run post its per-site results as a GitHub Issue comment
 
 jobs:
   checkin:
@@ -51,3 +55,5 @@ jobs:
       - name: Run the 8-site batch check-in
         if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         run: node scripts/run-checkin-final.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # lets `gh` post results to an Issue

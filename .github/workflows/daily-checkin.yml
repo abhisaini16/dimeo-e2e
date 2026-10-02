@@ -1,0 +1,34 @@
+name: Daily Check-in Batch
+
+on:
+  schedule:
+    # 6:00 PM in Australia/Sydney, covering both DST states since cron here is fixed
+    # UTC. run-checkin-final-scheduled.js checks local time and no-ops on whichever
+    # of these two doesn't actually correspond to 6pm right now.
+    - cron: '0 7 * * *'  # 6:00 PM AEDT (UTC+11)
+    - cron: '0 8 * * *'  # 6:00 PM AEST (UTC+10)
+  workflow_dispatch: {}  # manual "Run workflow" button, usable from the GitHub mobile app
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Restore site/account credentials from secret
+        run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
+        env:
+          CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
+
+      - name: Run the 8-site batch check-in
+        run: node scripts/run-checkin-final-scheduled.js

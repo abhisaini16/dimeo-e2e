@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+test-results/
+playwright-report/
+.env
+tests/data/accounts.json
+tests/data/checkin-groups.json
+tests/data/checkin-sites.json

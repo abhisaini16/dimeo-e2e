@@ -1,0 +1,27 @@
+{
+  "name": "dimeo-e2e",
+  "private": true,
+  "scripts": {
+    "test": "playwright test tests/login-smoke.spec.js",
+    "test:checkin": "playwright test tests/cleaner-sign-in-out.spec.js",
+    "codegen": "playwright codegen https://portal.dimeo.com.au/login/",
+    "checkin:fyshwick-kingston": "node scripts/run-checkin-group.js fyshwick-kingston",
+    "checkin:belconnen-gallagher-qbe": "node scripts/run-checkin-group.js belconnen-gallagher-qbe",
+    "checkin:macquarie": "node scripts/run-checkin-group.js macquarie",
+    "checkin:bega-po": "node scripts/run-checkin-group.js bega-po",
+    "checkin:bega-medical-merimbula": "node scripts/run-checkin-group.js bega-medical-merimbula",
+    "checkin:bmd": "node scripts/run-checkin-group.js bmd",
+    "checkin:psd-woden-tuggeranong-greenway": "node scripts/run-checkin-group.js psd-woden-tuggeranong-greenway",
+    "checkin:griffith-psd-manuka": "node scripts/run-checkin-group.js griffith-psd-manuka",
+    "checkin:jindabyne": "node scripts/run-checkin-group.js jindabyne",
+    "checkin:cooma": "node scripts/run-checkin-group.js cooma",
+    "checkin:weston-queenbeyan": "node scripts/run-checkin-group.js weston-queenbeyan",
+    "checkin:narooma": "node scripts/run-checkin-group.js narooma",
+    "checkin:city-post": "node scripts/run-checkin-group.js city-post",
+    "checkin:mawson-phillip": "node scripts/run-checkin-group.js mawson-phillip",
+    "checkin:mitchell": "node scripts/run-checkin-group.js mitchell"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

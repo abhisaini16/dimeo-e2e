@@ -35,7 +35,9 @@ async function dismissHazardModalIfPresent(page) {
   return false;
 }
 
-async function runGroup(group, { headless = true } = {}) {
+async function runGroup(group, { headless = true, mode = 'both' } = {}) {
+  // mode: 'both' (default, check in then out), 'checkin' (stop after check-in),
+  // or 'checkout' (skip straight to checkout, expects it's already checked in).
   const results = [];
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext({ permissions: ['geolocation'] });
@@ -157,11 +159,24 @@ async function runGroup(group, { headless = true } = {}) {
       }
       const alreadyCheckedIn = /Checked In/.test(bodyText);
 
+      if (mode === 'checkout' && !alreadyCheckedIn) {
+        log(`SKIP ${siteKey}: checkout-only run, but shift isn't checked in yet — nothing to check out.`);
+        results.push({ site: siteKey, status: 'not-yet-checked-in' });
+        announceNext(i);
+        continue;
+      }
+      if (mode === 'checkin' && alreadyCheckedIn) {
+        log(`SKIP ${siteKey}: checkin-only run, but shift is already checked in.`);
+        results.push({ site: siteKey, status: 'already-checked-in' });
+        announceNext(i);
+        continue;
+      }
+
       await context.grantPermissions(['geolocation']);
       await context.setGeolocation({ latitude: known.lat, longitude: known.lon, accuracy: 20 });
       await page.reload({ waitUntil: 'networkidle' }); // geolocation is read once on mount
 
-      if (!alreadyCheckedIn) {
+      if (mode !== 'checkout' && !alreadyCheckedIn) {
         log(`Attempting Check In for ${siteKey}...`);
         const checkInBtn = page.getByRole('button', { name: /^check in$/i });
         if (!(await checkInBtn.isVisible().catch(() => false))) {
@@ -179,6 +194,13 @@ async function runGroup(group, { headless = true } = {}) {
           continue;
         }
         await dismissHazardModalIfPresent(page); // some clients confirm hazards right after Check In
+
+        if (mode === 'checkin') {
+          log(`DONE ${siteKey}: checked in successfully (checkout-only run will complete this later).`);
+          results.push({ site: siteKey, status: 'checked-in' });
+          announceNext(i);
+          continue;
+        }
         log(`${siteKey}: Checked In confirmed. Attempting Check Out...`);
       } else {
         log(`${siteKey} was already checked in from a prior run; looking for Check Out.`);

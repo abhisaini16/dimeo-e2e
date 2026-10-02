@@ -33,6 +33,7 @@ const MATCHERS = {
   'PSD-Woden':           { all: ['PSD', 'WODEN'] },                     // NOT confirmed verbatim
   'Cooma-PO':            { all: ['COOMA'] },                            // confirmed shift exists as "COOMA-VALE ST-PO"; NOTE address mismatch, see sites.json
   'BMD':                 { all: ['WHITLAM'] },                          // confirmed: "Whitlam Site Shed"
+  'Yass-PO':             { all: ['YASS'] },                             // confirmed: "YASS-COMUR ST-MX"
 };
 
 function cardMatchesSite(cardText, siteKey) {

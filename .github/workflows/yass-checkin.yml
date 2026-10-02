@@ -1,0 +1,88 @@
+name: Yass Random Check-in/out
+
+on:
+  schedule:
+    # Check-in window target: 5:03-5:13am Sydney time. These fire ~5:00am local
+    # (one for each DST state); the actual random landing happens inside
+    # run-yass-checkin.js, which re-checks local time and jitters the wait.
+    - cron: '0 18 * * *'  # ~5:00am AEDT (UTC+11)
+    - cron: '0 19 * * *'  # ~5:00am AEST (UTC+10)
+    # Check-out window target: 6:09-6:17am Sydney time, same approach.
+    - cron: '5 19 * * *'  # ~6:05am AEDT
+    - cron: '5 20 * * *'  # ~6:05am AEST
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Which action to run'
+        required: true
+        type: choice
+        options: [checkin, checkout]
+
+permissions:
+  contents: read
+  issues: write  # lets the run post its result as a GitHub Issue comment
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine action and whether to proceed
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ACTION="${{ github.event.inputs.action }}"
+            SHOULD_RUN=true
+          else
+            SCHEDULE="${{ github.event.schedule }}"
+            if [ "$SCHEDULE" = "0 18 * * *" ] || [ "$SCHEDULE" = "0 19 * * *" ]; then
+              ACTION=checkin
+              TARGET_MIN=300
+            else
+              ACTION=checkout
+              TARGET_MIN=365
+            fi
+            MIN_AWAY=$(node -e "
+              const n = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+              console.log(Math.abs((n.getHours() * 60 + n.getMinutes()) - $TARGET_MIN));
+            ")
+            echo "Action: $ACTION, minutes from target: $MIN_AWAY"
+            SHOULD_RUN=$([ "$MIN_AWAY" -le 15 ] && echo true || echo false)
+          fi
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.decide.outputs.should_run == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.decide.outputs.should_run == 'true'
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.decide.outputs.should_run == 'true'
+        run: npm install
+
+      - name: Install Playwright browser
+        if: steps.decide.outputs.should_run == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Restore site/account credentials from secret
+        if: steps.decide.outputs.should_run == 'true'
+        run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
+        env:
+          CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
+
+      - name: Run check-in
+        if: steps.decide.outputs.should_run == 'true' && steps.decide.outputs.action == 'checkin'
+        run: node scripts/run-yass-checkin.js
+        env:
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run check-out
+        if: steps.decide.outputs.should_run == 'true' && steps.decide.outputs.action == 'checkout'
+        run: node scripts/run-yass-checkout.js
+        env:
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

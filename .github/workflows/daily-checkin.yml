@@ -13,22 +13,41 @@ jobs:
   checkin:
     runs-on: ubuntu-latest
     steps:
+      - name: Check if it's ~6pm in Australia/Sydney
+        id: timecheck
+        run: |
+          MINUTES_AWAY=$(node -e "
+            const n = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+            console.log(Math.abs((n.getHours() * 60 + n.getMinutes()) - (18 * 60)));
+          ")
+          echo "Minutes away from 6pm Sydney time: $MINUTES_AWAY"
+          echo "should_run=$([ "$MINUTES_AWAY" -le 20 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # Manual runs (workflow_dispatch) always proceed; the two scheduled cron
+      # triggers only proceed on whichever one actually corresponds to 6pm right
+      # now, so Playwright/npm install isn't wasted on the other one.
       - uses: actions/checkout@v4
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
 
       - uses: actions/setup-node@v4
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         with:
           node-version: '20'
 
       - name: Install dependencies
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         run: npm install
 
       - name: Install Playwright browser
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         run: npx playwright install --with-deps chromium
 
       - name: Restore site/account credentials from secret
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
         env:
           CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
 
       - name: Run the 8-site batch check-in
-        run: node scripts/run-checkin-final-scheduled.js
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        run: node scripts/run-checkin-final.js

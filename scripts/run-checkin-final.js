@@ -1,7 +1,17 @@
 // A fixed, curated set of sites spanning multiple accounts, run in one go.
 // Each distinct account logs in once and handles whichever of these sites belong to it.
+const fs = require('fs');
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
+
+const STATUS_ICON = {
+  'done': '✅',
+  'already-done': '☑️',
+  'checked-in-awaiting-checkout': '⏳',
+  'no-shift-today': '➖',
+  'no-active-shift': '➖',
+};
+const iconFor = (status) => STATUS_ICON[status] || '❌';
 
 const SELECTED_IDS = [
   'psd-manuka',
@@ -50,7 +60,23 @@ const SELECTED_IDS = [
 
   console.log('\n=== Final combined summary ===');
   for (const r of allResults) {
-    console.log(`  ${r.site}: ${r.status}`);
+    console.log(`  ${iconFor(r.status)} ${r.site}: ${r.status}`);
+  }
+
+  // GitHub Actions renders anything appended here as the run's Job Summary — visible
+  // right from the notification email/app without opening the raw log.
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const rows = allResults
+      .map((r) => `| ${r.site} | ${iconFor(r.status)} ${r.status} |`)
+      .join('\n');
+    const summary = [
+      `# Daily Check-in Batch — ${new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })}`,
+      '',
+      '| Site | Result |',
+      '|---|---|',
+      rows,
+    ].join('\n');
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\n');
   }
 
   const BENIGN = ['done', 'already-done', 'no-active-shift', 'no-shift-today', 'checked-in-awaiting-checkout'];

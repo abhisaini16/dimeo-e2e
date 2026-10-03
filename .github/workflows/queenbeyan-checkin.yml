@@ -16,6 +16,7 @@ on:
     - cron: '0 4 * * *'    # ~2:00pm AEST -> Saturday check-in trigger
     - cron: '40 4 * * *'   # ~3:40pm AEDT -> Saturday check-out trigger (sleeps the rest of the way)
     - cron: '40 5 * * *'   # ~3:40pm AEST -> Saturday check-out trigger
+    - cron: '54 11 * * *'  # TEMPORARY one-off live test of the real scheduler path (no force_action) — remove after confirming
   workflow_dispatch:
     inputs:
       force_action:
@@ -53,6 +54,10 @@ jobs:
               ;;
             "40 4 * * *"|"40 5 * * *")
               echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+              echo "day_type=saturday" >> "$GITHUB_OUTPUT"
+              ;;
+            "54 11 * * *")
+              echo "trigger=checkin" >> "$GITHUB_OUTPUT"
               echo "day_type=saturday" >> "$GITHUB_OUTPUT"
               ;;
             *)

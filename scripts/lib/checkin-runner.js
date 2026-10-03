@@ -145,7 +145,10 @@ async function runGroup(group, { headless = true, mode = 'both' } = {}) {
       }
 
       const bodyText = await page.locator('body').innerText();
-      if (/\bFinished\b/.test(bodyText) === false && /Check In/.test(bodyText) === false) {
+      // A page already checked in (but not yet out) shows a "Check Out" control and
+      // neither "Finished" nor "Check In" anywhere — that's a normal state, not a
+      // broken one, and must be accepted here or checkout-mode runs can never proceed.
+      if (/\bFinished\b/.test(bodyText) === false && /Check In/.test(bodyText) === false && /Check Out/.test(bodyText) === false) {
         log(`SKIP ${siteKey}: unexpected page state, no Check In control found.`);
         results.push({ site: siteKey, status: 'no-checkin-control' });
         announceNext(i);

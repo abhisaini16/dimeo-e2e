@@ -60,7 +60,7 @@ async function runGroup(group, { headless = true, mode = 'both' } = {}) {
       results.push({ site: '(login)', status: 'login-failed' });
       return results;
     }
-    log(`Logged in as ${group.email}. Sites to handle: ${group.sites.join(', ')}`);
+    log(`Logged in as "${group.label}". Sites to handle: ${group.sites.join(', ')}`);
 
     const now = new Date();
     const shortDate = (d) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });

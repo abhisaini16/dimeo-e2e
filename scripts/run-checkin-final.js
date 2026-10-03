@@ -38,9 +38,9 @@ const SELECTED_IDS = [
 
   const allResults = [];
   for (const acct of byAccount.values()) {
-    console.log(`\n>>> Logging in as ${acct.email} for: ${acct.labels.join(', ')}`);
+    console.log(`\n>>> Logging in for: ${acct.labels.join(', ')}`);
     const group = {
-      id: acct.email,
+      id: acct.labels.join('+').replace(/\s+/g, '-'),
       label: acct.labels.join(' & '),
       email: acct.email,
       password: acct.password,

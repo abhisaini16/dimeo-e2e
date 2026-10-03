@@ -14,7 +14,9 @@ const SECRET_DST = path.join(ROOT, 'tests/data/checkin-sites.json');
 if (fs.existsSync(SECRET_SRC)) fs.copyFileSync(SECRET_SRC, SECRET_DST);
 
 const name = process.argv[2];
-const job = jobs[name];
+// `manual-<site-id>` jobs (from the Telegram bot) are resolved dynamically.
+const manual = /^manual-([\w-]+)$/.exec(name || '');
+const job = manual ? { script: 'scripts/run-manual.js', env: { SITE_ID: manual[1] } } : jobs[name];
 if (!job) { console.error(`Unknown job "${name}". Known: ${Object.keys(jobs).join(', ')}`); process.exit(2); }
 
 const run = (script, env) => spawnSync('node', [script], { cwd: ROOT, env: { ...process.env, ...env }, stdio: 'inherit' }).status;

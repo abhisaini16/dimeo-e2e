@@ -1,0 +1,110 @@
+[
+ {
+  "id": "fyshwick",
+  "label": "Fyshwick PO"
+ },
+ {
+  "id": "kingston",
+  "label": "Kingston PO"
+ },
+ {
+  "id": "belconnen",
+  "label": "Belconnen PO"
+ },
+ {
+  "id": "kingston-gallagher",
+  "label": "Kingston Gallagher"
+ },
+ {
+  "id": "qbe",
+  "label": "QBE (Canberra)"
+ },
+ {
+  "id": "macquarie",
+  "label": "Macquarie PO"
+ },
+ {
+  "id": "bega-po",
+  "label": "Bega PO"
+ },
+ {
+  "id": "bega-medical",
+  "label": "Bega Urgent Clinic"
+ },
+ {
+  "id": "merimbula",
+  "label": "Merimbula PO"
+ },
+ {
+  "id": "bmd",
+  "label": "BMD"
+ },
+ {
+  "id": "psd-woden",
+  "label": "PSD Woden"
+ },
+ {
+  "id": "psd-tuggeranong",
+  "label": "PSD Tuggeranong"
+ },
+ {
+  "id": "greenway",
+  "label": "Greenway PO"
+ },
+ {
+  "id": "griffith",
+  "label": "Griffith PO"
+ },
+ {
+  "id": "psd-manuka",
+  "label": "PSD Manuka Dental"
+ },
+ {
+  "id": "jindabyne",
+  "label": "Jindabyne"
+ },
+ {
+  "id": "cooma",
+  "label": "Cooma PO"
+ },
+ {
+  "id": "weston",
+  "label": "Weston PO"
+ },
+ {
+  "id": "queenbeyan",
+  "label": "Queenbeyan PO"
+ },
+ {
+  "id": "narooma",
+  "label": "Narooma PO"
+ },
+ {
+  "id": "suncorp-phillip",
+  "label": "Suncorp Phillip"
+ },
+ {
+  "id": "psd-queenbeyan",
+  "label": "PSD Queenbeyan"
+ },
+ {
+  "id": "city-post",
+  "label": "City Post (Canberra GPO)"
+ },
+ {
+  "id": "mawson",
+  "label": "Mawson PO"
+ },
+ {
+  "id": "phillip",
+  "label": "Phillip PO"
+ },
+ {
+  "id": "mitchell",
+  "label": "Mitchell PO"
+ },
+ {
+  "id": "yass",
+  "label": "Yass PO"
+ }
+]

@@ -1,0 +1,80 @@
+name: Macquarie Random Check-in/out
+
+on:
+  schedule:
+    # Weekday-only (no Saturday/Sunday shift). Exactly 2 logical events/day, each
+    # needing a pair of cron entries for the two DST states — 4 invocations/day
+    # total, same single-sleep-per-hit design as yass-checkin.yml/cooma-checkin.yml.
+    - cron: '30 6 * * *'   # ~5:30pm AEDT -> check-in trigger
+    - cron: '30 7 * * *'   # ~5:30pm AEST -> check-in trigger
+    - cron: '40 7 * * *'   # ~6:40pm AEDT -> check-out trigger (sleeps the rest of the way)
+    - cron: '40 8 * * *'   # ~6:40pm AEST -> check-out trigger
+  workflow_dispatch:
+    inputs:
+      force_action:
+        description: 'Force an action now, bypassing the time check (for testing)'
+        type: choice
+        options: [auto, checkin, checkout]
+        default: auto
+
+permissions:
+  contents: read
+  issues: write  # lets the run post its result as a GitHub Issue comment
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine which trigger fired
+        id: which
+        run: |
+          SCHEDULE="${{ github.event.schedule }}"
+          if [ "$SCHEDULE" = "30 6 * * *" ] || [ "$SCHEDULE" = "30 7 * * *" ]; then
+            echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+          else
+            echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide whether to proceed this tick
+        id: decide
+        run: node scripts/macquarie-decide.js
+        env:
+          FORCE_ACTION: ${{ github.event.inputs.force_action || 'auto' }}
+          WHICH_TRIGGER: ${{ steps.which.outputs.trigger || 'checkin' }}
+
+      # Runs only on the ~2 ticks/day that actually match (weekday + near reference
+      # time) — every other tick (the vast majority) stops above.
+      - uses: actions/setup-node@v4
+        if: steps.decide.outputs.should_act == 'true'
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.decide.outputs.should_act == 'true'
+        run: npm install
+
+      - name: Install Playwright browser
+        if: steps.decide.outputs.should_act == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Restore site/account credentials from secret
+        if: steps.decide.outputs.should_act == 'true'
+        run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
+        env:
+          CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
+
+      - name: Run check-in
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkin'
+        run: node scripts/run-macquarie-checkin.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Run check-out
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkout'
+        run: node scripts/run-macquarie-checkout.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}

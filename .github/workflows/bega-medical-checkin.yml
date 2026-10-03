@@ -1,0 +1,61 @@
+name: Bega-Medical Check-in
+
+on:
+  schedule:
+    # 10:00 PM in Australia/Sydney, covering both DST states since cron here is fixed
+    # UTC. The "Check if it's ~10pm" step below skips the rest of the job on whichever
+    # of these two doesn't actually correspond to 10pm right now. Mirrors
+    # daily-checkin.yml's simple fixed-time structure — moved out of that batch so it
+    # runs on its own schedule instead of alongside the other 7 sites.
+    - cron: '0 11 * * *'  # 10:00 PM AEDT (UTC+11)
+    - cron: '0 12 * * *'  # 10:00 PM AEST (UTC+10)
+  workflow_dispatch: {}  # manual "Run workflow" button, usable from the GitHub mobile app
+
+permissions:
+  contents: read
+  issues: write  # lets the run post its result as a GitHub Issue comment
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if it's ~10pm in Australia/Sydney
+        id: timecheck
+        run: |
+          MINUTES_AWAY=$(node -e "
+            const n = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+            console.log(Math.abs((n.getHours() * 60 + n.getMinutes()) - (22 * 60)));
+          ")
+          echo "Minutes away from 10pm Sydney time: $MINUTES_AWAY"
+          echo "should_run=$([ "$MINUTES_AWAY" -le 20 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # Manual runs (workflow_dispatch) always proceed; the two scheduled cron
+      # triggers only proceed on whichever one actually corresponds to 10pm right
+      # now, so Playwright/npm install isn't wasted on the other one.
+      - uses: actions/checkout@v4
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+
+      - uses: actions/setup-node@v4
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        run: npm install
+
+      - name: Install Playwright browser
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        run: npx playwright install --with-deps chromium
+
+      - name: Restore site/account credentials from secret
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
+        env:
+          CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
+
+      - name: Run Bega-Medical check-in
+        if: steps.timecheck.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        run: node scripts/run-bega-medical.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # lets `gh` post results to an Issue

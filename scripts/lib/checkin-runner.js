@@ -35,9 +35,12 @@ async function dismissHazardModalIfPresent(page) {
   return false;
 }
 
-async function runGroup(group, { headless = true, mode = 'both' } = {}) {
+async function runGroup(group, { headless = true, mode = 'both', interSiteDelayMs = 0 } = {}) {
   // mode: 'both' (default, check in then out), 'checkin' (stop after check-in),
   // or 'checkout' (skip straight to checkout, expects it's already checked in).
+  // interSiteDelayMs: if set, waits this long before each site after the first one
+  // in this group's list (the caller handles the gap before the group's own first
+  // site, if any gap is needed there too).
   const results = [];
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext({ permissions: ['geolocation'] });
@@ -72,6 +75,10 @@ async function runGroup(group, { headless = true, mode = 'both' } = {}) {
     };
 
     for (let i = 0; i < group.sites.length; i++) {
+      if (i > 0 && interSiteDelayMs > 0) {
+        log(`Waiting ${(interSiteDelayMs / 60000).toFixed(0)} min before next site...`);
+        await new Promise((r) => setTimeout(r, interSiteDelayMs));
+      }
       const siteKey = group.sites[i];
       const known = sitesByKey[siteKey];
       if (!known) {

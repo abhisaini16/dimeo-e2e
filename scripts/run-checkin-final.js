@@ -1,21 +1,25 @@
-// A fixed, curated set of sites spanning multiple accounts, run in one go, every day
-// of the week. A site with no shift today just reports "no-active-shift"/
-// "no-shift-today" via the live portal check in checkin-runner.js; that's a normal,
-// expected outcome, not an error.
+// A fixed, curated set of sites, run in this exact sequence with a 5-minute gap
+// before every single site (even ones sharing an account/login session) — not all
+// signed in at once. Runs every day of the week; a site with no shift today just
+// reports "no-active-shift"/"no-shift-today" via the live portal check in
+// checkin-runner.js, which is a normal, expected outcome, not an error.
+// Bega-Medical intentionally isn't here — it runs on its own separate 10pm
+// trigger instead (see bega-medical-checkin.yml).
 const fs = require('fs');
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
 const { iconFor, postResultsToGitHubIssue } = require('./lib/notify');
 
+const INTER_SITE_DELAY_MS = 5 * 60 * 1000;
+
 const SELECTED_IDS = [
-  'psd-manuka',
-  'psd-tuggeranong',
-  'psd-woden',
-  'psd-queenbeyan',
-  'qbe',
-  'suncorp-phillip',
-  'bega-medical',
   'kingston-gallagher',
+  'qbe',
+  'psd-manuka',
+  'psd-woden',
+  'psd-tuggeranong',
+  'psd-queenbeyan',
+  'suncorp-phillip',
 ];
 
 (async () => {
@@ -25,21 +29,26 @@ const SELECTED_IDS = [
     return e;
   });
 
-  // Group by account so each login is used exactly once, even though these sites
-  // span many different accounts.
-  const byAccount = new Map();
+  // Group consecutive same-account sites so each login is reused within that run,
+  // while still preserving the exact sequence order above.
+  const groups = [];
   for (const e of entries) {
-    const key = `${e.email}:::${e.password}`;
-    if (!byAccount.has(key)) {
-      byAccount.set(key, { email: e.email, password: e.password, sites: [], labels: [] });
+    const last = groups[groups.length - 1];
+    if (last && last.email === e.email && last.password === e.password) {
+      last.sites.push(e.site);
+      last.labels.push(e.label);
+    } else {
+      groups.push({ email: e.email, password: e.password, sites: [e.site], labels: [e.label] });
     }
-    const acct = byAccount.get(key);
-    acct.sites.push(e.site);
-    acct.labels.push(e.label);
   }
 
   const allResults = [];
-  for (const acct of byAccount.values()) {
+  for (let g = 0; g < groups.length; g++) {
+    if (g > 0) {
+      console.log(`\n>>> Waiting 5 min before next site...`);
+      await new Promise((r) => setTimeout(r, INTER_SITE_DELAY_MS));
+    }
+    const acct = groups[g];
     console.log(`\n>>> Logging in for: ${acct.labels.join(', ')}`);
     const group = {
       id: acct.labels.join('+').replace(/\s+/g, '-'),
@@ -48,7 +57,7 @@ const SELECTED_IDS = [
       password: acct.password,
       sites: acct.sites,
     };
-    const results = await runGroup(group);
+    const results = await runGroup(group, { interSiteDelayMs: INTER_SITE_DELAY_MS });
     allResults.push(...results);
   }
 

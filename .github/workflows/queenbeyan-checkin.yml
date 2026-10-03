@@ -1,0 +1,81 @@
+name: Queenbeyan Random Check-in/out (Saturday)
+
+on:
+  schedule:
+    # Saturday-only dedicated schedule (2:00-3:00pm check-in, fixed 105 min/1.75hr
+    # later check-out). Weekdays are handled by the regular 6pm daily batch instead.
+    # Same cron times as belconnen-checkin.yml (shared window), but Queenbeyan uses
+    # its own hash salt so its actual random landing time differs from Belconnen's.
+    - cron: '0 3 * * *'    # ~2:00pm AEDT -> check-in trigger
+    - cron: '0 4 * * *'    # ~2:00pm AEST -> check-in trigger
+    - cron: '40 4 * * *'   # ~3:40pm AEDT -> check-out trigger (sleeps the rest of the way)
+    - cron: '40 5 * * *'   # ~3:40pm AEST -> check-out trigger
+  workflow_dispatch:
+    inputs:
+      force_action:
+        description: 'Force an action now, bypassing the time/day check (for testing)'
+        type: choice
+        options: [auto, checkin, checkout]
+        default: auto
+
+permissions:
+  contents: read
+  issues: write  # lets the run post its result as a GitHub Issue comment
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine which trigger fired
+        id: which
+        run: |
+          SCHEDULE="${{ github.event.schedule }}"
+          if [ "$SCHEDULE" = "0 3 * * *" ] || [ "$SCHEDULE" = "0 4 * * *" ]; then
+            echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+          else
+            echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide whether to proceed this tick
+        id: decide
+        run: node scripts/queenbeyan-decide.js
+        env:
+          FORCE_ACTION: ${{ github.event.inputs.force_action || 'auto' }}
+          WHICH_TRIGGER: ${{ steps.which.outputs.trigger || 'checkin' }}
+
+      # Runs only on the ~2 ticks/day that actually match (Saturday + near reference
+      # time) — every other tick (the vast majority) stops above.
+      - uses: actions/setup-node@v4
+        if: steps.decide.outputs.should_act == 'true'
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.decide.outputs.should_act == 'true'
+        run: npm install
+
+      - name: Install Playwright browser
+        if: steps.decide.outputs.should_act == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Restore site/account credentials from secret
+        if: steps.decide.outputs.should_act == 'true'
+        run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
+        env:
+          CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
+
+      - name: Run check-in
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkin'
+        run: node scripts/run-queenbeyan-checkin.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Run check-out
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkout'
+        run: node scripts/run-queenbeyan-checkout.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}

@@ -20,11 +20,6 @@ on:
         type: choice
         options: [auto, checkin, checkout]
         default: auto
-      force_weekday:
-        description: 'Override the weekday check (for testing Sat/Sun behavior on a weekday or vice versa)'
-        type: choice
-        options: [real, weekday, weekend]
-        default: real
 
 permissions:
   contents: read
@@ -51,47 +46,38 @@ jobs:
         run: node scripts/yass-decide.js
         env:
           FORCE_ACTION: ${{ github.event.inputs.force_action || 'auto' }}
-          FORCE_WEEKDAY: ${{ github.event.inputs.force_weekday || 'real' }}
           WHICH_TRIGGER: ${{ steps.which.outputs.trigger || 'checkin' }}
 
-      # Weekend hit: report "no shift" directly, no portal/Playwright needed at all.
-      - name: Report no shift (weekend)
-        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'false'
-        run: node scripts/yass-report-no-shift.js
-        env:
-          YASS_ACTION: ${{ steps.decide.outputs.action }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Weekday hit: do the real thing. These steps only run on the ~2 ticks/day
-      # that actually match — every other tick (the vast majority) stops above.
+      # Runs every day of the week — a day with no actual shift is handled by the
+      # live portal check reporting "no-active-shift", not by a weekday guess here.
       - uses: actions/setup-node@v4
-        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
+        if: steps.decide.outputs.should_act == 'true'
         with:
           node-version: '20'
 
       - name: Install dependencies
-        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
+        if: steps.decide.outputs.should_act == 'true'
         run: npm install
 
       - name: Install Playwright browser
-        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
+        if: steps.decide.outputs.should_act == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Restore site/account credentials from secret
-        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
+        if: steps.decide.outputs.should_act == 'true'
         run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
         env:
           CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
 
       - name: Run check-in
-        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true' && steps.decide.outputs.action == 'checkin'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkin'
         run: node scripts/run-yass-checkin.js
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Run check-out
-        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true' && steps.decide.outputs.action == 'checkout'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkout'
         run: node scripts/run-yass-checkout.js
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

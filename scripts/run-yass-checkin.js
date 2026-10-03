@@ -1,13 +1,29 @@
-// Checks in to Yass-PO. Timing (landing somewhere in the 5:00-5:15 Sydney window) is
-// now handled entirely by yass-decide.js choosing which poll tick invokes this
-// script — by the time this runs, it's already the right moment, so it acts immediately.
+// Checks in to Yass-PO at today's deterministic target (somewhere in 5:00-5:15 Sydney
+// time, derived from a hash of today's date — see lib/yass-schedule.js). The workflow
+// fires this once, early; it sleeps the precise remaining amount itself, so there's
+// exactly one invocation for check-in per day, not a series of polls.
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
 const { postResultsToGitHubIssue } = require('./lib/notify');
+const { sydneyNow, computeTargets } = require('./lib/yass-schedule');
 
 (async () => {
   const entry = sitesList.find((s) => s.id === 'yass');
   if (!entry) throw new Error('No "yass" entry in tests/data/checkin-sites.json');
+
+  if (process.env.MANUAL_RUN !== 'true') {
+    const now = sydneyNow();
+    const { checkinTarget } = computeTargets(now);
+    const waitMs = checkinTarget - now;
+    if (waitMs > 0 && waitMs < 20 * 60_000) {
+      console.log(`Waiting ${(waitMs / 60000).toFixed(1)} min to land check-in at ${checkinTarget.toTimeString().slice(0, 8)} Sydney time...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+    } else {
+      console.log(`Target (${checkinTarget.toTimeString().slice(0, 8)}) is not in the near future from now (${now.toTimeString().slice(0, 8)}) — proceeding immediately.`);
+    }
+  } else {
+    console.log('Manual run — skipping wait, checking in immediately.');
+  }
 
   const group = { id: 'yass-checkin', label: 'Yass PO (check-in)', email: entry.email, password: entry.password, sites: [entry.site] };
   const results = await runGroup(group, { mode: 'checkin' });

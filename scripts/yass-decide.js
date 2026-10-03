@@ -1,35 +1,35 @@
-// Runs on every poll tick (every 5 min, broad window). Cheap: no npm install, no
-// Playwright — just time math against today's deterministic targets. Writes outputs
-// for the workflow to decide which (expensive) steps, if any, to run this tick.
+// Runs once per cron trigger (4/day: checkin x2 DST states, checkout x2 DST states).
+// Cheap: no npm install, no Playwright. Which action this trigger is for comes from
+// WHICH_TRIGGER (set by the workflow based on github.event.schedule); this script just
+// does a coarse sanity check (are we plausibly near the right early reference point?)
+// and the weekday gate. The precise random landing happens via a short sleep inside
+// the real check-in/check-out script itself — this step never needs fine-grained timing.
 const fs = require('fs');
-const { sydneyNow, computeTargets } = require('./lib/yass-schedule');
+const { sydneyNow } = require('./lib/yass-schedule');
 
-const TOLERANCE_MS = 2.4 * 60 * 1000; // just under half the 5-min poll interval
+const TOLERANCE_MS = 20 * 60 * 1000;
+// Early fixed reference points the cron entries aim for (not the random target itself).
+const REFERENCE_MINUTES = { checkin: 5 * 60, checkout: 6 * 60 + 5 };
 
-const forceAction = process.env.FORCE_ACTION || 'auto';   // 'auto' | 'checkin' | 'checkout'
-const forceWeekday = process.env.FORCE_WEEKDAY || 'real';  // 'real' | 'weekday' | 'weekend' (testing only)
+const forceAction = process.env.FORCE_ACTION || 'auto';     // 'auto' | 'checkin' | 'checkout'
+const whichTrigger = process.env.WHICH_TRIGGER || 'checkin'; // which cron fired, set by the workflow
+const forceWeekday = process.env.FORCE_WEEKDAY || 'real';    // 'real' | 'weekday' | 'weekend' (testing only)
 
 const now = sydneyNow();
-const { checkinTarget, checkoutTarget, delayMin, dateKey } = computeTargets(now);
+const action = (forceAction === 'checkin' || forceAction === 'checkout') ? forceAction : whichTrigger;
 
-let action = null;
-if (forceAction === 'checkin' || forceAction === 'checkout') {
-  action = forceAction;
-} else {
-  if (Math.abs(now - checkinTarget) <= TOLERANCE_MS) action = 'checkin';
-  else if (Math.abs(now - checkoutTarget) <= TOLERANCE_MS) action = 'checkout';
-}
+const nowMinutes = now.getHours() * 60 + now.getMinutes();
+const minutesAway = Math.abs(nowMinutes - REFERENCE_MINUTES[action]);
+const shouldAct = forceAction !== 'auto' || minutesAway <= TOLERANCE_MS / 60000;
 
 const realIsWeekday = now.getDay() >= 1 && now.getDay() <= 5;
 const isWeekday = forceWeekday === 'weekday' ? true : forceWeekday === 'weekend' ? false : realIsWeekday;
 
-console.log(`Date: ${dateKey}`);
 console.log(`Sydney now: ${now.toString()}`);
-console.log(`Today's check-in target: ${checkinTarget.toString()}`);
-console.log(`Today's check-out target: ${checkoutTarget.toString()} (+${delayMin} min after check-in)`);
-console.log(`Action this tick: ${action || 'none'} | Weekday: ${isWeekday} (real: ${realIsWeekday})`);
+console.log(`Trigger: ${whichTrigger}, action: ${action}, minutes from reference: ${minutesAway}`);
+console.log(`Should act: ${shouldAct} | Weekday: ${isWeekday} (real: ${realIsWeekday})`);
 
 const out = process.env.GITHUB_OUTPUT;
-fs.appendFileSync(out, `action=${action || 'none'}\n`);
-fs.appendFileSync(out, `should_act=${action ? 'true' : 'false'}\n`);
+fs.appendFileSync(out, `action=${action}\n`);
+fs.appendFileSync(out, `should_act=${shouldAct}\n`);
 fs.appendFileSync(out, `is_weekday=${isWeekday}\n`);

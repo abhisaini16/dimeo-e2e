@@ -2,12 +2,17 @@ name: Yass Random Check-in/out
 
 on:
   schedule:
-    # One broad poll every 5 minutes covering both possible DST states (the decide
-    # step computes real Sydney time itself, so DST is handled automatically — no
-    # need for separate AEDT/AEST cron lines). Covers ~4am-8am Sydney across both
-    # states, comfortably spanning the 5:00-5:15 check-in window and the resulting
-    # 6:10-6:45 check-out window (70-90 min after a check-in anywhere in that range).
-    - cron: '*/5 18,19,20 * * *'
+    # Exactly 2 logical events/day (check-in, check-out), each needing a pair of cron
+    # entries for the two DST states — 4 invocations/day total. Each real hit sleeps
+    # internally to land its action at today's precise deterministic target (see
+    # lib/yass-schedule.js); the "wrong DST" entry of each pair just does a cheap
+    # sanity-check-and-skip. This is deliberately NOT frequent polling: GitHub Actions
+    # bills each invocation at a minimum of 1 full minute regardless of duration, so
+    # many short polls cost more in total than a few longer, purposeful ones.
+    - cron: '0 18 * * *'  # ~5:00am AEDT -> check-in trigger
+    - cron: '0 19 * * *'  # ~5:00am AEST -> check-in trigger
+    - cron: '5 19 * * *'  # ~6:05am AEDT -> check-out trigger (sleeps the rest of the way)
+    - cron: '5 20 * * *'  # ~6:05am AEST -> check-out trigger
   workflow_dispatch:
     inputs:
       force_action:
@@ -26,17 +31,28 @@ permissions:
   issues: write  # lets the run post its result as a GitHub Issue comment
 
 jobs:
-  poll:
+  run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Decide what (if anything) to do this tick
+      - name: Determine which trigger fired
+        id: which
+        run: |
+          SCHEDULE="${{ github.event.schedule }}"
+          if [ "$SCHEDULE" = "0 18 * * *" ] || [ "$SCHEDULE" = "0 19 * * *" ]; then
+            echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+          else
+            echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide whether to proceed this tick
         id: decide
         run: node scripts/yass-decide.js
         env:
           FORCE_ACTION: ${{ github.event.inputs.force_action || 'auto' }}
           FORCE_WEEKDAY: ${{ github.event.inputs.force_weekday || 'real' }}
+          WHICH_TRIGGER: ${{ steps.which.outputs.trigger || 'checkin' }}
 
       # Weekend hit: report "no shift" directly, no portal/Playwright needed at all.
       - name: Report no shift (weekend)
@@ -72,9 +88,11 @@ jobs:
         run: node scripts/run-yass-checkin.js
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Run check-out
         if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true' && steps.decide.outputs.action == 'checkout'
         run: node scripts/run-yass-checkout.js
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}

@@ -2,14 +2,15 @@
 // per-site weekday assumptions. A site with no shift today just reports
 // "no-active-shift"/"no-shift-today" via the live portal check in checkin-runner.js;
 // that's a normal, expected outcome, not an error.
-// Yass, Cooma and Fyshwick are excluded here because they have their own dedicated
-// workflows with precise randomized check-in/out timing, rather than this fixed 6pm run.
+// Yass, Cooma, Fyshwick and Kingston are excluded here because they have their own
+// dedicated workflows with precise randomized check-in/out timing, rather than this
+// fixed 6pm run.
 const fs = require('fs');
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
 const { iconFor, postResultsToGitHubIssue } = require('./lib/notify');
 
-const EXCLUDED_IDS = ['yass', 'cooma', 'fyshwick'];
+const EXCLUDED_IDS = ['yass', 'cooma', 'fyshwick', 'kingston'];
 
 (async () => {
   const entries = sitesList.filter((s) => !EXCLUDED_IDS.includes(s.id));

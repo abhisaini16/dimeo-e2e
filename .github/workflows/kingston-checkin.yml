@@ -1,0 +1,103 @@
+name: Kingston Random Check-in/out
+
+on:
+  schedule:
+    # Mirrors fyshwick-checkin.yml's design — see that file for the full rationale.
+    # Kingston's windows are placed 30 min after Fyshwick-PO's latest possible finish
+    # on each day-type (a static time offset only; there is no runtime dependency on
+    # the Fyshwick workflow actually finishing).
+    - cron: '55 22 * * *'  # ~9:55am AEDT -> weekday check-in trigger
+    - cron: '55 23 * * *'  # ~9:55am AEST -> weekday check-in trigger
+    - cron: '10 1 * * *'   # ~12:10pm AEDT -> weekday check-out trigger (sleeps the rest of the way)
+    - cron: '10 2 * * *'   # ~12:10pm AEST -> weekday check-out trigger
+    - cron: '40 6 * * *'   # ~5:40pm AEDT -> Saturday check-in trigger
+    - cron: '40 7 * * *'   # ~5:40pm AEST -> Saturday check-in trigger
+    - cron: '55 8 * * *'   # ~7:55pm AEDT -> Saturday check-out trigger (sleeps the rest of the way)
+    - cron: '55 9 * * *'   # ~7:55pm AEST -> Saturday check-out trigger
+  workflow_dispatch:
+    inputs:
+      force_action:
+        description: 'Force an action now, bypassing the time/day check (for testing)'
+        type: choice
+        options: [auto, checkin, checkout]
+        default: auto
+
+permissions:
+  contents: read
+  issues: write  # lets the run post its result as a GitHub Issue comment
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine which trigger fired
+        id: which
+        run: |
+          SCHEDULE="${{ github.event.schedule }}"
+          case "$SCHEDULE" in
+            "55 22 * * *"|"55 23 * * *")
+              echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+              echo "day_type=weekday" >> "$GITHUB_OUTPUT"
+              ;;
+            "10 1 * * *"|"10 2 * * *")
+              echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+              echo "day_type=weekday" >> "$GITHUB_OUTPUT"
+              ;;
+            "40 6 * * *"|"40 7 * * *")
+              echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+              echo "day_type=saturday" >> "$GITHUB_OUTPUT"
+              ;;
+            "55 8 * * *"|"55 9 * * *")
+              echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+              echo "day_type=saturday" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+              echo "day_type=weekday" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Decide whether to proceed this tick
+        id: decide
+        run: node scripts/kingston-decide.js
+        env:
+          FORCE_ACTION: ${{ github.event.inputs.force_action || 'auto' }}
+          WHICH_TRIGGER: ${{ steps.which.outputs.trigger }}
+          TARGET_DAY_TYPE: ${{ steps.which.outputs.day_type }}
+
+      # Runs only on the ~2 ticks/day that actually match today's real day-type and
+      # reference time — every other tick (the vast majority) stops above.
+      - uses: actions/setup-node@v4
+        if: steps.decide.outputs.should_act == 'true'
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.decide.outputs.should_act == 'true'
+        run: npm install
+
+      - name: Install Playwright browser
+        if: steps.decide.outputs.should_act == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Restore site/account credentials from secret
+        if: steps.decide.outputs.should_act == 'true'
+        run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
+        env:
+          CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
+
+      - name: Run check-in
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkin'
+        run: node scripts/run-kingston-checkin.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Run check-out
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.action == 'checkout'
+        run: node scripts/run-kingston-checkout.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}

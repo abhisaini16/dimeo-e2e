@@ -1,6 +1,6 @@
 // Checks out of Belconnen-PO at today's deterministic target: the same check-in
-// moment computed by run-belconnen-checkin.js, plus a fixed 105 min (1.75hr) delay —
-// see lib/belconnen-schedule.js. One invocation per Saturday.
+// moment computed by run-belconnen-checkin.js, plus a 105-120 min delay (also derived
+// from today's date hash) — see lib/belconnen-schedule.js. One invocation per day.
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
 const { postResultsToGitHubIssue } = require('./lib/notify');
@@ -14,11 +14,13 @@ const { sydneyNow, computeTargets } = require('./lib/belconnen-schedule');
     const now = sydneyNow();
     const targets = computeTargets(now);
     if (!targets) {
-      console.log('Today is not Saturday — no dedicated Belconnen window, proceeding immediately to confirm via the live portal.');
+      console.log('Today has no Belconnen-PO window (Sunday) — proceeding immediately to confirm via the live portal.');
     } else {
       const waitMs = targets.checkoutTarget - now;
-      if (waitMs > 0 && waitMs < 70 * 60_000) {
-        console.log(`Waiting ${(waitMs / 60000).toFixed(1)} min to land check-out at ${targets.checkoutTarget.toTimeString().slice(0, 8)} Sydney time (+${targets.delayMin} min after today's check-in target)...`);
+      // Threshold covers the full possible range from this trigger's reference point
+      // on either day-type (Saturday's spread is the larger of the two, ~80 min).
+      if (waitMs > 0 && waitMs < 90 * 60_000) {
+        console.log(`Waiting ${(waitMs / 60000).toFixed(1)} min to land check-out at ${targets.checkoutTarget.toTimeString().slice(0, 8)} Sydney time (+${targets.delayMin} min after today's check-in target, ${targets.dayType})...`);
         await new Promise((r) => setTimeout(r, waitMs));
       } else {
         console.log(`Target (${targets.checkoutTarget.toTimeString().slice(0, 8)}) is not in the near future from now (${now.toTimeString().slice(0, 8)}) — proceeding immediately.`);

@@ -1,7 +1,6 @@
-// Checks in to Belconnen-PO at today's deterministic Saturday target (somewhere in
-// 2:00-3:00pm Sydney time, derived from a hash of today's date — see
-// lib/belconnen-schedule.js). Weekdays aren't handled here at all; the regular 6pm
-// daily batch covers those.
+// Checks in to Belconnen-PO at today's deterministic target. Day-type-aware window,
+// same approach as run-fyshwick-checkin.js: weekdays land in 10:00-10:28pm Sydney
+// time, Saturdays in 2:00-3:00pm — see lib/belconnen-schedule.js. No Sunday shift.
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
 const { postResultsToGitHubIssue } = require('./lib/notify');
@@ -15,11 +14,11 @@ const { sydneyNow, computeTargets } = require('./lib/belconnen-schedule');
     const now = sydneyNow();
     const targets = computeTargets(now);
     if (!targets) {
-      console.log('Today is not Saturday — no dedicated Belconnen window, proceeding immediately to confirm via the live portal.');
+      console.log('Today has no Belconnen-PO window (Sunday) — proceeding immediately to confirm via the live portal.');
     } else {
       const waitMs = targets.checkinTarget - now;
-      if (waitMs > 0 && waitMs < 65 * 60_000) {
-        console.log(`Waiting ${(waitMs / 60000).toFixed(1)} min to land check-in at ${targets.checkinTarget.toTimeString().slice(0, 8)} Sydney time...`);
+      if (waitMs > 0 && waitMs < 35 * 60_000) {
+        console.log(`Waiting ${(waitMs / 60000).toFixed(1)} min to land check-in at ${targets.checkinTarget.toTimeString().slice(0, 8)} Sydney time (${targets.dayType})...`);
         await new Promise((r) => setTimeout(r, waitMs));
       } else {
         console.log(`Target (${targets.checkinTarget.toTimeString().slice(0, 8)}) is not in the near future from now (${now.toTimeString().slice(0, 8)}) — proceeding immediately.`);

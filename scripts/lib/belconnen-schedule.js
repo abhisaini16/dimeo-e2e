@@ -1,7 +1,6 @@
-// Deterministic Saturday-only randomness for Belconnen-PO. Weekdays continue to be
-// handled by the regular 6pm daily batch (run-checkin-final.js) — this dedicated
-// schedule only applies on Saturdays, landing check-in somewhere in 2:00-3:00pm and
-// check-out a fixed 105 min (1.75hr) later.
+// Deterministic daily randomness for the Belconnen-PO schedule. Day-type-aware, same
+// approach as lib/fyshwick-schedule.js/lib/kingston-schedule.js: a late-evening window
+// on weekdays, a different afternoon window on Saturdays, no shift on Sundays.
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -14,22 +13,38 @@ function sydneyNow() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
 }
 
-const WINDOW = { startHour: 14, startMinute: 0, windowMin: 60 }; // 2:00-3:00pm
-const CHECKOUT_DELAY_MIN = 105; // fixed 1.75 hour, not randomized
-
-// `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()). Returns null on any
-// day other than Saturday.
-function computeTargets(base) {
-  if (base.getDay() !== 6) return null;
-
-  const dateKey = `${base.getFullYear()}-${base.getMonth() + 1}-${base.getDate()}`;
-  const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), WINDOW.startHour, WINDOW.startMinute, 0);
-  const offsetSec = simpleHash(dateKey + '-belconnen-checkin') % (WINDOW.windowMin * 60 + 1);
-  checkinTarget.setSeconds(checkinTarget.getSeconds() + offsetSec);
-
-  const checkoutTarget = new Date(checkinTarget.getTime() + CHECKOUT_DELAY_MIN * 60_000);
-
-  return { checkinTarget, checkoutTarget, delayMin: CHECKOUT_DELAY_MIN, dateKey };
+// Which day-type window applies for a given Sydney-local date. null means Sunday —
+// Belconnen-PO has no Sunday shift.
+function getDayType(base) {
+  const day = base.getDay();
+  if (day >= 1 && day <= 5) return 'weekday';
+  if (day === 6) return 'saturday';
+  return null;
 }
 
-module.exports = { sydneyNow, computeTargets, simpleHash };
+const WINDOWS = {
+  weekday: { startHour: 22, startMinute: 0, windowMin: 28 }, // 10:00-10:28pm
+  saturday: { startHour: 14, startMinute: 0, windowMin: 60 }, // 2:00-3:00pm
+};
+
+// `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).
+function computeTargets(base) {
+  const dayType = getDayType(base);
+  if (!dayType) return null; // Sunday: no window to compute
+
+  const { startHour, startMinute, windowMin } = WINDOWS[dayType];
+  const dateKey = `${base.getFullYear()}-${base.getMonth() + 1}-${base.getDate()}`;
+
+  const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), startHour, startMinute, 0);
+  const checkinOffsetSec = simpleHash(dateKey + '-belconnen-checkin') % (windowMin * 60 + 1);
+  checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
+
+  // Weekday checkout can land past midnight (e.g. 10:28pm start + up to 120 min);
+  // that's fine, checkoutTarget below naturally rolls onto the next calendar date.
+  const delayMin = 105 + (simpleHash(dateKey + '-belconnen-checkout-delay') % 16); // 105..120 inclusive
+  const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
+
+  return { dayType, checkinTarget, checkoutTarget, delayMin, dateKey };
+}
+
+module.exports = { sydneyNow, computeTargets, getDayType, simpleHash };

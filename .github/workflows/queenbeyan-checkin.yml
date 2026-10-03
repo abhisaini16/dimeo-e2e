@@ -1,15 +1,21 @@
-name: Queenbeyan Random Check-in/out (Saturday)
+name: Queenbeyan Random Check-in/out
 
 on:
   schedule:
-    # Saturday-only dedicated schedule (2:00-3:00pm check-in, fixed 105 min/1.75hr
-    # later check-out). Weekdays are handled by the regular 6pm daily batch instead.
-    # Same cron times as belconnen-checkin.yml (shared window), but Queenbeyan uses
-    # its own hash salt so its actual random landing time differs from Belconnen's.
-    - cron: '0 3 * * *'    # ~2:00pm AEDT -> check-in trigger
-    - cron: '0 4 * * *'    # ~2:00pm AEST -> check-in trigger
-    - cron: '40 4 * * *'   # ~3:40pm AEDT -> check-out trigger (sleeps the rest of the way)
-    - cron: '40 5 * * *'   # ~3:40pm AEST -> check-out trigger
+    # Queenbeyan's window depends on the day: an evening window on weekdays, a
+    # different afternoon window on Saturdays, no shift on Sundays. Each day-type
+    # needs its own check-in/check-out cron pair (x2 for the two DST states) — 8
+    # invocations/day total, same single-sleep-per-hit design as
+    # yass-checkin.yml/fyshwick-checkin.yml. Whichever pair doesn't match today's
+    # actual Sydney day-of-week is rejected cheaply in queenbeyan-decide.js.
+    - cron: '0 7 * * *'    # ~6:00pm AEDT -> weekday check-in trigger
+    - cron: '0 8 * * *'    # ~6:00pm AEST -> weekday check-in trigger
+    - cron: '40 8 * * *'   # ~7:40pm AEDT -> weekday check-out trigger (sleeps the rest of the way)
+    - cron: '40 9 * * *'   # ~7:40pm AEST -> weekday check-out trigger
+    - cron: '0 3 * * *'    # ~2:00pm AEDT -> Saturday check-in trigger
+    - cron: '0 4 * * *'    # ~2:00pm AEST -> Saturday check-in trigger
+    - cron: '40 4 * * *'   # ~3:40pm AEDT -> Saturday check-out trigger (sleeps the rest of the way)
+    - cron: '40 5 * * *'   # ~3:40pm AEST -> Saturday check-out trigger
   workflow_dispatch:
     inputs:
       force_action:
@@ -32,21 +38,39 @@ jobs:
         id: which
         run: |
           SCHEDULE="${{ github.event.schedule }}"
-          if [ "$SCHEDULE" = "0 3 * * *" ] || [ "$SCHEDULE" = "0 4 * * *" ]; then
-            echo "trigger=checkin" >> "$GITHUB_OUTPUT"
-          else
-            echo "trigger=checkout" >> "$GITHUB_OUTPUT"
-          fi
+          case "$SCHEDULE" in
+            "0 7 * * *"|"0 8 * * *")
+              echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+              echo "day_type=weekday" >> "$GITHUB_OUTPUT"
+              ;;
+            "40 8 * * *"|"40 9 * * *")
+              echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+              echo "day_type=weekday" >> "$GITHUB_OUTPUT"
+              ;;
+            "0 3 * * *"|"0 4 * * *")
+              echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+              echo "day_type=saturday" >> "$GITHUB_OUTPUT"
+              ;;
+            "40 4 * * *"|"40 5 * * *")
+              echo "trigger=checkout" >> "$GITHUB_OUTPUT"
+              echo "day_type=saturday" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "trigger=checkin" >> "$GITHUB_OUTPUT"
+              echo "day_type=weekday" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
 
       - name: Decide whether to proceed this tick
         id: decide
         run: node scripts/queenbeyan-decide.js
         env:
           FORCE_ACTION: ${{ github.event.inputs.force_action || 'auto' }}
-          WHICH_TRIGGER: ${{ steps.which.outputs.trigger || 'checkin' }}
+          WHICH_TRIGGER: ${{ steps.which.outputs.trigger }}
+          TARGET_DAY_TYPE: ${{ steps.which.outputs.day_type }}
 
-      # Runs only on the ~2 ticks/day that actually match (Saturday + near reference
-      # time) — every other tick (the vast majority) stops above.
+      # Runs only on the ~2 ticks/day that actually match today's real day-type and
+      # reference time — every other tick (the vast majority) stops above.
       - uses: actions/setup-node@v4
         if: steps.decide.outputs.should_act == 'true'
         with:

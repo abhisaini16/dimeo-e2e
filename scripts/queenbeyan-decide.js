@@ -11,7 +11,7 @@ const TOLERANCE_MS = 20 * 60 * 1000;
 // Early fixed reference points the cron entries aim for (not the random target itself).
 const REFERENCE_MINUTES = {
   weekday: { checkin: 18 * 60, checkout: 19 * 60 + 40 },
-  saturday: { checkin: 22 * 60 + 5, checkout: 22 * 60 + 15 }, // TEMPORARY: live test targets, revert to 14*60 / 15*60+40 after
+  saturday: { checkin: 14 * 60, checkout: 15 * 60 + 40 },
 };
 
 const forceAction = process.env.FORCE_ACTION || 'auto';         // 'auto' | 'checkin' | 'checkout'

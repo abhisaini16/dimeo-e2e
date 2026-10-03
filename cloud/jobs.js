@@ -7,7 +7,7 @@
 // the whole time), a planner runs once each morning, computes today's deterministic
 // targets from scripts/lib/<site>-schedule.js, and schedules one short job per action.
 // Those jobs set MANUAL_RUN=true so the script acts immediately rather than sleeping.
-const SITES = ['yass', 'cooma', 'macquarie', 'queenbeyan', 'kingston', 'fyshwick', 'belconnen'];
+const SITES = ['yass', 'cooma', 'macquarie', 'queenbeyan', 'kingston', 'fyshwick', 'belconnen', 'weston'];
 
 const jobs = {};
 for (const site of SITES) {

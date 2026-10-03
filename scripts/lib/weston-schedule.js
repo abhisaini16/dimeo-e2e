@@ -1,12 +1,6 @@
-// Deterministic daily randomness for the Kingston-PO schedule. Same day-type-aware
-// approach as lib/fyshwick-schedule.js: an early-morning-ish window on weekdays, a
-// different afternoon window on Saturdays, no shift on Sundays.
-//
-// Kingston's windows are deliberately placed to start 30 min after Fyshwick-PO's
-// latest possible finish on each day-type (weekday: 6:45am start + 160 min max delay
-// = 9:25am latest finish -> 9:55am; Saturday: 2:30pm start + 160 min max delay =
-// 5:10pm latest finish -> 5:40pm). This is a static time offset only — there is no
-// runtime dependency on the Fyshwick workflow actually finishing.
+// Deterministic daily randomness for the Weston-PO schedule. Day-type-aware, same
+// approach as lib/fyshwick-schedule.js/lib/kingston-schedule.js: an evening window
+// on weekdays, a different afternoon window on Saturdays, no shift on Sundays.
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -20,7 +14,7 @@ function sydneyNow() {
 }
 
 // Which day-type window applies for a given Sydney-local date. null means Sunday —
-// Kingston-PO has no Sunday shift.
+// Weston-PO has no Sunday shift.
 function getDayType(base) {
   const day = base.getDay();
   if (day >= 1 && day <= 5) return 'weekday';
@@ -29,8 +23,8 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 17, startMinute: 40, windowMin: 16 }, // 5:40-5:56pm
-  saturday: { startHour: 17, startMinute: 40, windowMin: 16 }, // 5:40-5:56pm
+  weekday: { startHour: 20, startMinute: 35, windowMin: 15 }, // 8:35-8:50pm
+  saturday: { startHour: 18, startMinute: 20, windowMin: 10 }, // 6:20-6:30pm
 };
 
 // `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).
@@ -42,10 +36,10 @@ function computeTargets(base) {
   const dateKey = `${base.getFullYear()}-${base.getMonth() + 1}-${base.getDate()}`;
 
   const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), startHour, startMinute, 0);
-  const checkinOffsetSec = simpleHash(dateKey + '-kingston-checkin') % (windowMin * 60 + 1);
+  const checkinOffsetSec = simpleHash(dateKey + '-weston-checkin') % (windowMin * 60 + 1);
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
-  const delayMin = 140 + (simpleHash(dateKey + '-kingston-checkout-delay') % 21); // 140..160 inclusive
+  const delayMin = 160 + (simpleHash(dateKey + '-weston-checkout-delay') % 21); // 160..180 inclusive
   const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
 
   return { dayType, checkinTarget, checkoutTarget, delayMin, dateKey };

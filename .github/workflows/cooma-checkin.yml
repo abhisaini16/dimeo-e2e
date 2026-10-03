@@ -1,17 +1,7 @@
 name: Cooma Random Check-in/out
 
 on:
-  schedule:
-    # Exactly 2 logical events/day (check-in, check-out), each needing a pair of cron
-    # entries for the two DST states — 4 invocations/day total. Each real hit sleeps
-    # internally to land its action at today's precise deterministic target (see
-    # lib/cooma-schedule.js); the "wrong DST" entry of each pair just does a cheap
-    # sanity-check-and-skip. Mirrors yass-checkin.yml's design — see that file for the
-    # full cost rationale.
-    - cron: '47 18 * * *'  # ~5:47am AEDT -> check-in trigger
-    - cron: '47 19 * * *'  # ~5:47am AEST -> check-in trigger
-    - cron: '42 19 * * *'  # ~6:42am AEDT -> check-out trigger (sleeps the rest of the way)
-    - cron: '42 20 * * *'  # ~6:42am AEST -> check-out trigger
+  # Schedule moved to Google Cloud Scheduler (see cloud/jobs.js); manual runs only here.
   workflow_dispatch:
     inputs:
       force_action:

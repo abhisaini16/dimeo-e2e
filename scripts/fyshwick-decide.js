@@ -10,7 +10,7 @@ const { sydneyNow, getDayType } = require('./lib/fyshwick-schedule');
 const TOLERANCE_MS = 20 * 60 * 1000;
 // Early fixed reference points the cron entries aim for (not the random target itself).
 const REFERENCE_MINUTES = {
-  weekday: { checkin: 6 * 60 + 18, checkout: 8 * 60 + 33 },
+  weekday: { checkin: 21 * 60 + 20, checkout: 23 * 60 + 35 },
   saturday: { checkin: 14 * 60 + 14, checkout: 16 * 60 + 29 },
 };
 

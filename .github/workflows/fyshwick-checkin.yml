@@ -1,21 +1,7 @@
 name: Fyshwick Random Check-in/out
 
 on:
-  schedule:
-    # Fyshwick's window depends on the day: an early-morning window on weekdays, a
-    # very different afternoon window on Saturdays, and no shift at all on Sundays.
-    # Each day-type needs its own check-in/check-out cron pair (x2 for the two DST
-    # states) — 8 invocations/day total, same single-sleep-per-hit design as
-    # yass-checkin.yml/cooma-checkin.yml. Whichever pair doesn't match today's actual
-    # Sydney day-of-week is rejected cheaply in fyshwick-decide.js.
-    - cron: '18 19 * * *'  # ~6:18am AEDT -> weekday check-in trigger
-    - cron: '18 20 * * *'  # ~6:18am AEST -> weekday check-in trigger
-    - cron: '33 21 * * *'  # ~8:33am AEDT -> weekday check-out trigger (sleeps the rest of the way)
-    - cron: '33 22 * * *'  # ~8:33am AEST -> weekday check-out trigger
-    - cron: '14 3 * * *'   # ~2:14pm AEDT -> Saturday check-in trigger
-    - cron: '14 4 * * *'   # ~2:14pm AEST -> Saturday check-in trigger
-    - cron: '29 5 * * *'   # ~4:29pm AEDT -> Saturday check-out trigger (sleeps the rest of the way)
-    - cron: '29 6 * * *'   # ~4:29pm AEST -> Saturday check-out trigger
+  # Schedule moved to Google Cloud Scheduler (see cloud/jobs.js); manual runs only here.
   workflow_dispatch:
     inputs:
       force_action:

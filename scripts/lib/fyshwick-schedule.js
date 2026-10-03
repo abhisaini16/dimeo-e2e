@@ -23,7 +23,7 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 6, startMinute: 18, windowMin: 27 },  // 6:18-6:45am
+  weekday: { startHour: 21, startMinute: 20, windowMin: 10 }, // 9:20-9:30pm (checkout crosses midnight)
   saturday: { startHour: 14, startMinute: 14, windowMin: 16 }, // 2:14-2:30pm
 };
 

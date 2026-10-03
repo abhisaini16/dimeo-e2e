@@ -1,14 +1,7 @@
 name: Bega-Medical Check-in
 
 on:
-  schedule:
-    # 10:00 PM in Australia/Sydney, covering both DST states since cron here is fixed
-    # UTC. The "Check if it's ~10pm" step below skips the rest of the job on whichever
-    # of these two doesn't actually correspond to 10pm right now. Mirrors
-    # daily-checkin.yml's simple fixed-time structure — moved out of that batch so it
-    # runs on its own schedule instead of alongside the other 7 sites.
-    - cron: '0 11 * * *'  # 10:00 PM AEDT (UTC+11)
-    - cron: '0 12 * * *'  # 10:00 PM AEST (UTC+10)
+  # Schedule moved to Google Cloud Scheduler (see cloud/jobs.js); manual runs only here.
   workflow_dispatch: {}  # manual "Run workflow" button, usable from the GitHub mobile app
 
 permissions:

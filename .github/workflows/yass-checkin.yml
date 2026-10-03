@@ -1,18 +1,7 @@
 name: Yass Random Check-in/out
 
 on:
-  schedule:
-    # Exactly 2 logical events/day (check-in, check-out), each needing a pair of cron
-    # entries for the two DST states — 4 invocations/day total. Each real hit sleeps
-    # internally to land its action at today's precise deterministic target (see
-    # lib/yass-schedule.js); the "wrong DST" entry of each pair just does a cheap
-    # sanity-check-and-skip. This is deliberately NOT frequent polling: GitHub Actions
-    # bills each invocation at a minimum of 1 full minute regardless of duration, so
-    # many short polls cost more in total than a few longer, purposeful ones.
-    - cron: '0 18 * * *'  # ~5:00am AEDT -> check-in trigger
-    - cron: '0 19 * * *'  # ~5:00am AEST -> check-in trigger
-    - cron: '5 19 * * *'  # ~6:05am AEDT -> check-out trigger (sleeps the rest of the way)
-    - cron: '5 20 * * *'  # ~6:05am AEST -> check-out trigger
+  # Schedule moved to Google Cloud Scheduler (see cloud/jobs.js); manual runs only here.
   workflow_dispatch:
     inputs:
       force_action:

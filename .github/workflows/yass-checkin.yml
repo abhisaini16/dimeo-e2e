@@ -2,87 +2,79 @@ name: Yass Random Check-in/out
 
 on:
   schedule:
-    # Check-in window target: 5:03-5:13am Sydney time. These fire ~5:00am local
-    # (one for each DST state); the actual random landing happens inside
-    # run-yass-checkin.js, which re-checks local time and jitters the wait.
-    - cron: '0 18 * * *'  # ~5:00am AEDT (UTC+11)
-    - cron: '0 19 * * *'  # ~5:00am AEST (UTC+10)
-    # Check-out window target: 6:09-6:17am Sydney time, same approach.
-    - cron: '5 19 * * *'  # ~6:05am AEDT
-    - cron: '5 20 * * *'  # ~6:05am AEST
+    # One broad poll every 5 minutes covering both possible DST states (the decide
+    # step computes real Sydney time itself, so DST is handled automatically — no
+    # need for separate AEDT/AEST cron lines). Covers ~4am-8am Sydney across both
+    # states, comfortably spanning the 5:00-5:15 check-in window and the resulting
+    # 6:10-6:45 check-out window (70-90 min after a check-in anywhere in that range).
+    - cron: '*/5 18,19,20 * * *'
   workflow_dispatch:
     inputs:
-      action:
-        description: 'Which action to run'
-        required: true
+      force_action:
+        description: 'Force an action now, bypassing the time check (for testing)'
         type: choice
-        options: [checkin, checkout]
+        options: [auto, checkin, checkout]
+        default: auto
+      force_weekday:
+        description: 'Override the weekday check (for testing Sat/Sun behavior on a weekday or vice versa)'
+        type: choice
+        options: [real, weekday, weekend]
+        default: real
 
 permissions:
   contents: read
   issues: write  # lets the run post its result as a GitHub Issue comment
 
 jobs:
-  run:
+  poll:
     runs-on: ubuntu-latest
     steps:
-      - name: Determine action and whether to proceed
-        id: decide
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ACTION="${{ github.event.inputs.action }}"
-            SHOULD_RUN=true
-          else
-            SCHEDULE="${{ github.event.schedule }}"
-            if [ "$SCHEDULE" = "0 18 * * *" ] || [ "$SCHEDULE" = "0 19 * * *" ]; then
-              ACTION=checkin
-              TARGET_MIN=300
-            else
-              ACTION=checkout
-              TARGET_MIN=365
-            fi
-            MIN_AWAY=$(node -e "
-              const n = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
-              console.log(Math.abs((n.getHours() * 60 + n.getMinutes()) - $TARGET_MIN));
-            ")
-            echo "Action: $ACTION, minutes from target: $MIN_AWAY"
-            SHOULD_RUN=$([ "$MIN_AWAY" -le 15 ] && echo true || echo false)
-          fi
-          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
-          echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
-
       - uses: actions/checkout@v4
-        if: steps.decide.outputs.should_run == 'true'
 
+      - name: Decide what (if anything) to do this tick
+        id: decide
+        run: node scripts/yass-decide.js
+        env:
+          FORCE_ACTION: ${{ github.event.inputs.force_action || 'auto' }}
+          FORCE_WEEKDAY: ${{ github.event.inputs.force_weekday || 'real' }}
+
+      # Weekend hit: report "no shift" directly, no portal/Playwright needed at all.
+      - name: Report no shift (weekend)
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'false'
+        run: node scripts/yass-report-no-shift.js
+        env:
+          YASS_ACTION: ${{ steps.decide.outputs.action }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Weekday hit: do the real thing. These steps only run on the ~2 ticks/day
+      # that actually match — every other tick (the vast majority) stops above.
       - uses: actions/setup-node@v4
-        if: steps.decide.outputs.should_run == 'true'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
         with:
           node-version: '20'
 
       - name: Install dependencies
-        if: steps.decide.outputs.should_run == 'true'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
         run: npm install
 
       - name: Install Playwright browser
-        if: steps.decide.outputs.should_run == 'true'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Restore site/account credentials from secret
-        if: steps.decide.outputs.should_run == 'true'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true'
         run: echo "$CHECKIN_SITES_JSON" > tests/data/checkin-sites.json
         env:
           CHECKIN_SITES_JSON: ${{ secrets.CHECKIN_SITES_JSON }}
 
       - name: Run check-in
-        if: steps.decide.outputs.should_run == 'true' && steps.decide.outputs.action == 'checkin'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true' && steps.decide.outputs.action == 'checkin'
         run: node scripts/run-yass-checkin.js
         env:
-          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run check-out
-        if: steps.decide.outputs.should_run == 'true' && steps.decide.outputs.action == 'checkout'
+        if: steps.decide.outputs.should_act == 'true' && steps.decide.outputs.is_weekday == 'true' && steps.decide.outputs.action == 'checkout'
         run: node scripts/run-yass-checkout.js
         env:
-          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

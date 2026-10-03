@@ -1,19 +1,29 @@
-// Every site in checkin-sites.json, run in one go, every day of the week — no
-// per-site weekday assumptions. A site with no shift today just reports
-// "no-active-shift"/"no-shift-today" via the live portal check in checkin-runner.js;
-// that's a normal, expected outcome, not an error.
-// Yass, Cooma, Fyshwick, Kingston, Belconnen, Queenbeyan and Macquarie are excluded
-// here because they have their own dedicated workflows with precise randomized
-// check-in/out timing, rather than this fixed 6pm run.
+// A fixed, curated set of sites spanning multiple accounts, run in one go, every day
+// of the week. A site with no shift today just reports "no-active-shift"/
+// "no-shift-today" via the live portal check in checkin-runner.js; that's a normal,
+// expected outcome, not an error.
 const fs = require('fs');
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
 const { iconFor, postResultsToGitHubIssue } = require('./lib/notify');
 
-const EXCLUDED_IDS = ['yass', 'cooma', 'fyshwick', 'kingston', 'belconnen', 'queenbeyan', 'macquarie'];
+const SELECTED_IDS = [
+  'psd-manuka',
+  'psd-tuggeranong',
+  'psd-woden',
+  'psd-queenbeyan',
+  'qbe',
+  'suncorp-phillip',
+  'bega-medical',
+  'kingston-gallagher',
+];
 
 (async () => {
-  const entries = sitesList.filter((s) => !EXCLUDED_IDS.includes(s.id));
+  const entries = SELECTED_IDS.map((id) => {
+    const e = sitesList.find((s) => s.id === id);
+    if (!e) throw new Error(`Unknown site id "${id}" — check tests/data/checkin-sites.json`);
+    return e;
+  });
 
   // Group by account so each login is used exactly once, even though these sites
   // span many different accounts.

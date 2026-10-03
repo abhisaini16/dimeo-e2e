@@ -10,7 +10,8 @@ const { iconFor, postResultsToGitHubIssue } = require('./lib/notify');
   if (!entry) throw new Error('No "bega-medical" entry in tests/data/checkin-sites.json');
 
   const group = { id: 'bega-medical', label: entry.label, email: entry.email, password: entry.password, sites: [entry.site] };
-  const results = await runGroup(group);
+  // Bega-Medical only needs a check-in (the portal finishes the shift itself).
+  const results = await runGroup(group, { mode: 'checkin' });
 
   console.log('\n=== Bega-Medical result ===');
   for (const r of results) console.log(`  ${iconFor(r.status)} ${r.site}: ${r.status}`);

@@ -12,6 +12,16 @@ const { iconFor, postResultsToGitHubIssue } = require('./lib/notify');
 
 const INTER_SITE_DELAY_MS = 5 * 60 * 1000;
 
+// These sites only ever need a check-in (the portal finishes the shift itself).
+const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip']);
+// Which Sydney weekdays (0=Sun..6=Sat) each site is signed in on. PSD sites: Mon/Wed/Fri
+// nights only; everything else Mon-Fri. Public holidays are NOT special-cased — the
+// script still runs and the live portal reports no-active-shift. Set RUN_ALL_DAYS=true
+// to bypass this (manual testing).
+const PSD_DAYS = [1, 3, 5];
+const WEEKDAYS = [1, 2, 3, 4, 5];
+const daysFor = (id) => (id.startsWith('psd-') ? PSD_DAYS : WEEKDAYS);
+
 const SELECTED_IDS = [
   'kingston-gallagher',
   'qbe',
@@ -23,7 +33,10 @@ const SELECTED_IDS = [
 ];
 
 (async () => {
-  const entries = SELECTED_IDS.map((id) => {
+  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' })).getDay();
+  const todaysIds = SELECTED_IDS.filter((id) => process.env.RUN_ALL_DAYS === 'true' || daysFor(id).includes(today));
+  console.log(`Sydney weekday ${today}: running ${todaysIds.length}/${SELECTED_IDS.length} sites -> ${todaysIds.join(', ') || '(none)'}`);
+  const entries = todaysIds.map((id) => {
     const e = sitesList.find((s) => s.id === id);
     if (!e) throw new Error(`Unknown site id "${id}" — check tests/data/checkin-sites.json`);
     return e;
@@ -34,11 +47,12 @@ const SELECTED_IDS = [
   const groups = [];
   for (const e of entries) {
     const last = groups[groups.length - 1];
-    if (last && last.email === e.email && last.password === e.password) {
+    const checkinOnly = CHECKIN_ONLY.has(e.id);
+    if (last && last.email === e.email && last.password === e.password && last.checkinOnly === checkinOnly) {
       last.sites.push(e.site);
       last.labels.push(e.label);
     } else {
-      groups.push({ email: e.email, password: e.password, sites: [e.site], labels: [e.label] });
+      groups.push({ email: e.email, password: e.password, sites: [e.site], labels: [e.label], checkinOnly });
     }
   }
 
@@ -57,7 +71,7 @@ const SELECTED_IDS = [
       password: acct.password,
       sites: acct.sites,
     };
-    const results = await runGroup(group, { interSiteDelayMs: INTER_SITE_DELAY_MS });
+    const results = await runGroup(group, { interSiteDelayMs: INTER_SITE_DELAY_MS, mode: acct.checkinOnly ? 'checkin' : 'both' });
     allResults.push(...results);
   }
 

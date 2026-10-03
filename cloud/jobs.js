@@ -17,8 +17,8 @@ for (const site of SITES) {
 }
 
 // Fixed-time jobs that still run straight from Cloud Scheduler.
-jobs['daily-batch'] = { script: 'scripts/run-checkin-final.js', env: {}, cron: '0 18 * * *' };
-jobs['bega-medical'] = { script: 'scripts/run-bega-medical.js', env: {}, cron: '0 22 * * *' };
+jobs['daily-batch'] = { script: 'scripts/run-checkin-final.js', env: {}, cron: '0 18 * * 1-5' };
+jobs['bega-medical'] = { script: 'scripts/run-bega-medical.js', env: {}, cron: '0 22 * * 1-5' };
 
 // Morning planner (second run is a safety net — task names are deterministic so re-runs
 // never duplicate anything, and targets already in the past are skipped).

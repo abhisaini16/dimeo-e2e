@@ -1,8 +1,14 @@
 // Runs each morning (see jobs.js): computes today's random check-in/out targets for every
-// dedicated site and schedules one Cloud Task per action at the exact moment, which then
-// starts a short-lived Cloud Run Job execution. No container sits sleeping.
-// Safe to run repeatedly: task names are deterministic (site-action-date), so an existing
-// task is left alone, and targets already in the past are skipped.
+// dedicated site, resolves clashes, and schedules one Cloud Task per action at the exact
+// moment, which then starts a short-lived Cloud Run Job execution. No container sits
+// sleeping. Safe to run repeatedly: task names are deterministic (site-action-date), so an
+// existing task is left alone, and targets already in the past are skipped.
+//
+// Clash rules (a later event is pushed back; order is preserved):
+//   * SAME login: two actions on different sites sharing one account stay >= SAME_ACCOUNT_GAP
+//     apart, so they always happen strictly one after the other. The 6pm batch and the
+//     10pm Bega-Medical job are treated as reserved slots for their accounts.
+//   * ANY login: no two actions closer than GLOBAL_GAP, so logins don't bunch up.
 const { SITES } = require('./jobs');
 const { sendTelegramText } = require('../scripts/lib/notify');
 
@@ -12,6 +18,9 @@ const QUEUE = 'dimeo-actions';
 const SA = `dimeo-scheduler@${PROJECT}.iam.gserviceaccount.com`;
 // Container start + browser launch + login takes ~30-40s before the click happens.
 const LEAD_MS = 45_000;
+const MIN = 60_000;
+const SAME_ACCOUNT_GAP = 10 * MIN;
+const GLOBAL_GAP = 3 * MIN;
 const DRY = process.argv.includes('--dry');
 const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(7); // dry-run only
 // These sites work Mon-Fri only (their schedule libs have no day-type of their own).
@@ -20,7 +29,51 @@ const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(
 const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie', 'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell']);
 
 const runUrl = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/dimeo-checkin:run`;
-const fmt = (d) => d.toLocaleTimeString('en-AU', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false });
+const fmt = (ms) => new Date(ms).toLocaleTimeString('en-AU', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false });
+
+function accounts() {
+  const list = require('../tests/data/checkin-sites.json');
+  return Object.fromEntries(list.map((s) => [s.id, s.email.toLowerCase()]));
+}
+
+// Fixed-time jobs that also use logins: the 6pm batch (6-min slots, in order; PSD sites
+// Mon/Wed/Fri only; PSD-Manuka never before 6:45pm) and Bega-Medical at 10pm Mon-Fri.
+function reservedBlocks(base, acct) {
+  const dow = base.getDay();
+  if (dow < 1 || dow > 5) return [];
+  const at = (h, m) => new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0).getTime();
+  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka']
+    .filter((id) => !id.startsWith('psd-') || [1, 3, 5].includes(dow));
+  const blocks = [];
+  order.forEach((id, i) => {
+    const start = id === 'psd-manuka' ? Math.max(at(18, 0) + i * 6 * MIN, at(18, 45)) : at(18, 0) + i * 6 * MIN;
+    blocks.push({ label: `batch:${id}`, account: acct[id], lo: start - MIN, hi: start + 3 * MIN });
+  });
+  blocks.push({ label: 'bega-medical', account: acct['bega-medical'], lo: at(22, 0) - MIN, hi: at(22, 0) + 3 * MIN });
+  return blocks;
+}
+
+// Pushes events (forward only) until every rule holds. Returns events with `time` final.
+function resolve(events, blocks) {
+  const placed = [];
+  for (const e of events.sort((a, b) => a.orig - b.orig)) {
+    let t = e.orig;
+    for (let guard = 0; guard < 200; guard++) {
+      let moved = false;
+      for (const p of placed) {
+        const gap = p.account === e.account && p.site !== e.site ? SAME_ACCOUNT_GAP : GLOBAL_GAP;
+        if (Math.abs(t - p.time) < gap) { t = p.time + gap; moved = true; }
+      }
+      for (const b of blocks) {
+        if (b.account === e.account && t > b.lo - SAME_ACCOUNT_GAP && t < b.hi + SAME_ACCOUNT_GAP) { t = b.hi + SAME_ACCOUNT_GAP; moved = true; }
+      }
+      if (!moved) break;
+    }
+    e.time = t;
+    placed.push(e);
+  }
+  return placed;
+}
 
 async function accessToken() {
   const r = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', { headers: { 'Metadata-Flavor': 'Google' } });
@@ -47,29 +100,40 @@ async function enqueue(token, name, whenMs, jobName) {
 
 (async () => {
   const now = Date.now();
+  const acct = accounts();
   const lines = [];
   let failed = 0;
   const token = DRY ? null : await accessToken();
 
+  const first = require(`../scripts/lib/${SITES[0]}-schedule`);
+  const base = DRY && dateArg ? new Date(`${dateArg}T09:00:00`) : first.sydneyNow();
+  const weekend = base.getDay() === 0 || base.getDay() === 6;
+
+  const events = [];
   for (const site of SITES) {
     const lib = require(`../scripts/lib/${site}-schedule`);
-    const nowSyd = DRY && dateArg ? new Date(`${dateArg}T09:00:00`) : lib.sydneyNow();
-    const weekend = nowSyd.getDay() === 0 || nowSyd.getDay() === 6;
-    const t = MON_FRI_ONLY.has(site) && weekend ? null : lib.computeTargets(nowSyd);
+    const t = MON_FRI_ONLY.has(site) && weekend ? null : lib.computeTargets(base);
     if (!t) { lines.push(`➖ ${site}: no shift today`); continue; }
+    if (!acct[site]) throw new Error(`no account for ${site} in checkin-sites.json`);
     for (const [action, target] of [['checkin', t.checkinTarget], ['checkout', t.checkoutTarget]]) {
-      const when = target.getTime() - LEAD_MS;
-      const label = `${site} ${action} @ ${fmt(target)}`;
-      if (when <= now && !(DRY && dateArg)) { lines.push(`⏭ ${label} (already past, skipped)`); continue; }
-      if (DRY) { lines.push(`(dry) ${label}`); continue; }
-      try {
-        const res = await enqueue(token, `${site}-${action}-${t.dateKey.replace(/\W/g, '-')}`, when, `now-${site}-${action}`);
-        lines.push(`${res === 'exists' ? '☑️' : '🗓'} ${label}`);
-      } catch (e) { failed++; lines.push(`❌ ${label}: ${e.message}`); }
+      events.push({ site, action, account: acct[site], orig: target.getTime(), dateKey: t.dateKey });
     }
   }
 
-  const header = `Plan for ${new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', weekday: 'long', day: 'numeric', month: 'short' })}`;
+  const final = resolve(events, reservedBlocks(base, acct)).sort((a, b) => a.time - b.time);
+  for (const e of final) {
+    const slip = Math.round((e.time - e.orig) / MIN);
+    const label = `${fmt(e.time)} ${e.site} ${e.action}${slip >= 1 ? ` (+${slip}m clash-spacing)` : ''}`;
+    const when = e.time - LEAD_MS;
+    if (when <= now && !(DRY && dateArg)) { lines.push(`⏭ ${label} (already past, skipped)`); continue; }
+    if (DRY) { lines.push(`(dry) ${label}`); continue; }
+    try {
+      const res = await enqueue(token, `${e.site}-${e.action}-${e.dateKey.replace(/\W/g, '-')}`, when, `now-${e.site}-${e.action}`);
+      lines.push(`${res === 'exists' ? '☑️' : '🗓'} ${label}`);
+    } catch (err) { failed++; lines.push(`❌ ${label}: ${err.message}`); }
+  }
+
+  const header = `Plan for ${base.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}`;
   console.log([header, ...lines].join('\n'));
   if (!DRY && (failed || process.env.PLAN_NOTIFY !== 'off')) sendTelegramText([failed ? `⚠️ ${header} — ${failed} FAILED` : header, ...lines].join('\n'));
   process.exit(failed ? 1 : 0);

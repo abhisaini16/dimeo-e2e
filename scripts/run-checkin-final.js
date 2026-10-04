@@ -18,6 +18,9 @@ const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip']);
 // nights only; everything else Mon-Fri. Public holidays are NOT special-cased — the
 // script still runs and the live portal reports no-active-shift. Set RUN_ALL_DAYS=true
 // to bypass this (manual testing).
+// Earliest Sydney time (minutes after midnight) a site may start. PSD-Manuka shares a login
+// with Griffith-PO, whose checkout can land as late as ~6:37pm — hold Manuka until 6:45pm.
+const NOT_BEFORE_MIN = { 'psd-manuka': 18 * 60 + 45 };
 const PSD_DAYS = [1, 3, 5];
 const WEEKDAYS = [1, 2, 3, 4, 5];
 const daysFor = (id) => (id.startsWith('psd-') ? PSD_DAYS : WEEKDAYS);
@@ -54,7 +57,7 @@ const SELECTED_IDS = [
       last.sites.push(e.site);
       last.labels.push(e.label);
     } else {
-      groups.push({ email: e.email, password: e.password, sites: [e.site], labels: [e.label], checkinOnly });
+      groups.push({ email: e.email, password: e.password, sites: [e.site], labels: [e.label], checkinOnly, notBefore: NOT_BEFORE_MIN[e.id] });
     }
   }
 

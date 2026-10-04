@@ -53,6 +53,8 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   continues the last conversation on restart). Visible in the Claude mobile app as "Pi-Admin". Notes it must keep: `~/pi-admin/context/{STATE.md,LOG.md,history/}`.
 - **Pi notifications** use a separate bot `@piadmin_cbr_bot` (online-after-boot message, Pi-Admin link, problem/resolved alerts every 5 min via `pi-health.timer`).
 - The Dimeo repo is also cloned at `~/dimeo-e2e` (`git pull` to get the latest of this file).
+- **GitHub access from the Pi:** deploy key `~/.ssh/github_dimeo` (read-write, this repo only; GitHub shows it as "Pi-Admin (cbr-pi)"), remote is SSH.
+  Pi-Admin and the laptop session share this repo as their memory (rules in `CLAUDE.md`). The laptop has `gh` logged in as the repo owner (revoke at github.com/settings/applications).
 
 ## Owner preferences
 - Telegram times in the normal 12-hour clock. Pi screen = Raspberry Pi Connect, always. Command51 bot is for its own operations only; Pi things use the Pi-Admin bot.

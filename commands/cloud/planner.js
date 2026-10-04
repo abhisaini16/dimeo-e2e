@@ -29,7 +29,15 @@ const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(
 const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie', 'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell']);
 
 const runUrl = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/dimeo-checkin:run`;
-const fmt = (ms) => new Date(ms).toLocaleTimeString('en-AU', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false });
+// Normal 12-hour clock for Telegram (5:19 pm), and a sortable HHMM for task names.
+const fmt = (ms) => new Date(ms).toLocaleTimeString('en-AU', { timeZone: 'Australia/Sydney', hour: 'numeric', minute: '2-digit', hour12: true });
+const hhmm = (ms) => new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '');
+const NOTIFY_ONLY = process.env.PLAN_MODE === 'notify'; // the 7am run: send today's plan, queue nothing
+
+function siteNames() {
+  const list = require('../tests/data/checkin-sites.json');
+  return Object.fromEntries(list.map((s) => [s.id, s.site]));
+}
 
 function accounts() {
   const list = require('../tests/data/checkin-sites.json');
@@ -103,7 +111,7 @@ async function enqueue(token, name, whenMs, jobName) {
   const acct = accounts();
   const lines = [];
   let failed = 0;
-  const token = DRY ? null : await accessToken();
+  const token = DRY || NOTIFY_ONLY ? null : await accessToken();
 
   const first = require(`../scripts/lib/${SITES[0]}-schedule`);
   const base = DRY && dateArg ? new Date(`${dateArg}T09:00:00`) : first.sydneyNow();
@@ -120,20 +128,40 @@ async function enqueue(token, name, whenMs, jobName) {
     }
   }
 
-  const final = resolve(events, reservedBlocks(base, acct)).sort((a, b) => a.time - b.time);
+  const blocks = reservedBlocks(base, acct);
+  const final = resolve(events, blocks).sort((a, b) => a.time - b.time);
+  const names = siteNames();
+  const items = []; // 7am message rows: { t, text }
   for (const e of final) {
     const slip = Math.round((e.time - e.orig) / MIN);
     const label = `${fmt(e.time)} ${e.site} ${e.action}${slip >= 1 ? ` (+${slip}m clash-spacing)` : ''}`;
     const when = e.time - LEAD_MS;
     if (when <= now && !(DRY && dateArg)) { lines.push(`⏭ ${label} (already past, skipped)`); continue; }
     if (DRY) { lines.push(`(dry) ${label}`); continue; }
+    if (NOTIFY_ONLY) { items.push({ t: e.time, text: `${fmt(e.time)}  ${names[e.site] || e.site} ${e.action === 'checkin' ? 'check-in' : 'check-out'}` }); continue; }
     try {
-      const res = await enqueue(token, `${e.site}-${e.action}-${e.dateKey.replace(/\W/g, '-')}`, when, `now-${e.site}-${e.action}`);
+      const res = await enqueue(token, `${e.site}-${e.action}-${e.dateKey.replace(/\W/g, '-')}-${hhmm(e.time)}`, when, `now-${e.site}-${e.action}`);
       lines.push(`${res === 'exists' ? '☑️' : '🗓'} ${label}`);
     } catch (err) { failed++; lines.push(`❌ ${label}: ${err.message}`); }
   }
 
-  const header = `Plan for ${base.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}`;
+  let header = `Plan for ${base.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}`;
+  if (NOTIFY_ONLY) {
+    // the fixed-time jobs: 6pm batch (sites in order) and the 10pm Bega-Medical check-in
+    const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip']);
+    for (const b of blocks) {
+      const id = b.label.replace('batch:', '');
+      if (b.label === 'bega-medical') items.push({ t: b.lo + MIN, text: `${fmt(b.lo + MIN)}  ${names['bega-medical']} check-in` });
+      else items.push({ t: b.lo + MIN, text: `about ${fmt(b.lo + MIN)}  ${names[id] || id} ${CHECKIN_ONLY.has(id) ? 'check-in' : 'check-in + check-out'} (daily batch)` });
+    }
+    items.sort((a, b) => a.t - b.t);
+    lines.length = 0;
+    if (items.length) {
+      lines.push('Check-ins today (Sydney time):', ...items.map((i) => i.text), '', 'If a site has no shift today (for example a public holiday) its run will report "No active shift today".');
+    } else {
+      lines.push('No check-ins are scheduled today.');
+    }
+  }
   console.log([header, ...lines].join('\n'));
   if (!DRY && (failed || process.env.PLAN_NOTIFY !== 'off')) sendTelegramText([failed ? `⚠️ ${header} — ${failed} FAILED` : header, ...lines].join('\n'));
   process.exit(failed ? 1 : 0);

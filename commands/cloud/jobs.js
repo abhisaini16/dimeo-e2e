@@ -23,8 +23,11 @@ jobs['bega-medical'] = { script: 'scripts/run-bega-medical.js', env: {}, cron: '
 
 // Morning planner (second run is a safety net — task names are deterministic so re-runs
 // never duplicate anything, and targets already in the past are skipped).
-jobs['planner'] = { script: 'cloud/planner.js', env: {}, cron: '5 0 * * *' };
-jobs['planner-retry'] = { script: 'cloud/planner.js', env: {}, cron: '0 3 * * *' };
+// PLAN_NOTIFY=off: the queuing runs are silent unless something fails; the 7am job sends the day's plan.
+jobs['planner'] = { script: 'cloud/planner.js', env: { PLAN_NOTIFY: 'off' }, cron: '5 0 * * *' };
+jobs['planner-retry'] = { script: 'cloud/planner.js', env: { PLAN_NOTIFY: 'off' }, cron: '0 3 * * *' };
+// 7:00am every day: send the day's check-in plan to Telegram (queues nothing).
+jobs['plan-message'] = { script: 'cloud/planner.js', env: { PLAN_MODE: 'notify' }, cron: '0 7 * * *' };
 
 // Manual-only test jobs (no schedule).
 jobs['cloud-test'] = { script: 'scripts/run-cloud-test.js', env: {} };

@@ -3,6 +3,9 @@
 // Removes Scheduler jobs for entries that no longer have a cron (e.g. moved to the planner).
 // Usage: node cloud/deploy-scheduler.js [--dry]
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { jobs } = require('./jobs');
 
 const PROJECT = process.env.GCP_PROJECT || 'cbr-automation-510513';
@@ -30,12 +33,15 @@ for (const [name, job] of Object.entries(jobs)) {
   const sched = `dimeo-${name}`;
   wanted.add(sched);
   const exists = !dry && gcloud(['scheduler', 'jobs', 'describe', sched, '--location', REGION, '--project', PROJECT], { quiet: true }).status === 0;
-  const body = JSON.stringify({ overrides: { containerOverrides: [{ args: [name] }] } });
+  // The JSON body goes in a FILE: passing it as an argument through PowerShell strips its double quotes, producing an
+  // invalid body (HTTP 400) that makes every scheduled run fail silently.
+  const bodyFile = path.join(os.tmpdir(), `sched-body-${name}.json`);
+  fs.writeFileSync(bodyFile, JSON.stringify({ overrides: { containerOverrides: [{ args: [name] }] } }));
   const args = [
     'scheduler', 'jobs', exists ? 'update' : 'create', 'http', sched,
     '--location', REGION, '--project', PROJECT,
     '--schedule', job.cron, '--time-zone', 'Australia/Sydney',
-    '--uri', uri, '--http-method', 'POST', '--message-body', body,
+    '--uri', uri, '--http-method', 'POST', '--message-body-from-file', bodyFile,
     exists ? '--update-headers' : '--headers', 'Content-Type=application/json',
     '--oauth-service-account-email', SA,
     '--max-retry-attempts', '0', '--attempt-deadline', '60s',

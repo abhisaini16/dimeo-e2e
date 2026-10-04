@@ -1,6 +1,6 @@
 // Deterministic daily randomness for the Cooma schedule (Mon-Fri; the planner skips weekends).
 // Hash of today's date -> the same targets are derived independently by every caller.
-// Check-in lands somewhere in 5:45am-6:00am; check-out 60-75 min after that.
+// Check-in lands somewhere in 5:45pm-6:00pm; check-out 60-75 min after that.
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -18,8 +18,8 @@ function sydneyNow() {
 function computeTargets(base) {
   const dateKey = `${base.getFullYear()}-${base.getMonth() + 1}-${base.getDate()}`;
 
-  const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 5, 45, 0);
-  const checkinOffsetSec = simpleHash(dateKey + '-cooma-checkin') % (15 * 60 + 1); // 0..900 -> 5:45am-6:00am
+  const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 17, 45, 0);
+  const checkinOffsetSec = simpleHash(dateKey + '-cooma-checkin') % (15 * 60 + 1); // 0..900 -> 5:45pm-6:00pm
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
   const delayMin = 60 + (simpleHash(dateKey + '-cooma-checkout-delay') % 16); // 60..75 inclusive

@@ -1,4 +1,4 @@
-// Checks in to Yass-PO at today's deterministic target (somewhere in 5:00-5:15 Sydney
+// Checks in to Yass-PO at today's deterministic target (somewhere in 5:00-5:15pm Sydney
 // time, derived from a hash of today's date — see lib/yass-schedule.js). The workflow
 // fires this once, early; it sleeps the precise remaining amount itself, so there's
 // exactly one invocation for check-in per day, not a series of polls.

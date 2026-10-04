@@ -9,6 +9,16 @@ const STATUS_ICON = {
   'no-shift-today': '➖',
   'no-active-shift': '➖',
 };
+// Plain-English wording for Telegram (a public holiday or day off just shows no shift on the portal).
+const STATUS_TEXT = {
+  'no-active-shift': 'No active shift today',
+  'no-shift-today': 'No active shift today',
+  'already-checked-in': 'already checked in',
+  'already-done': 'already done',
+  'checked-in': 'checked in',
+  'checked-in-awaiting-checkout': 'checked in, waiting to check out',
+};
+const textFor = (status) => STATUS_TEXT[status] || status;
 function iconFor(status) {
   return STATUS_ICON[status] || '❌';
 }
@@ -34,7 +44,7 @@ function sendTelegramText(text) {
 }
 
 function postResultsToTelegram(allResults, label, nowStr) {
-  const rows = allResults.map((r) => `${iconFor(r.status)} ${r.site}: ${r.status}`).join('\n');
+  const rows = allResults.map((r) => `${iconFor(r.status)} ${r.site}: ${textFor(r.status)}`).join('\n');
   sendTelegramText(`${label} — ${nowStr}\n${rows}`);
 }
 

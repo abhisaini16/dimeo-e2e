@@ -51,6 +51,9 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   (connect.raspberrypi.com -> cbr-pi -> Screen sharing / Remote shell). A forced virtual display (`video=HDMI-A-2:1920x1080@60D` in `/boot/firmware/cmdline.txt`) keeps the desktop alive with no monitor.
 - **Pi-Admin:** an always-on Claude Code session (systemd user service `claude-pi-admin`, tmux socket `claude`, folder `~/pi-admin`, full authority, no prompts,
   continues the last conversation on restart). Visible in the Claude mobile app as "Pi-Admin". Notes it must keep: `~/pi-admin/context/{STATE.md,LOG.md,history/}`.
+- **Pi-Admin link after a reboot:** a resumed session (`--continue`) can lose its Remote Control link ("Remote Control disconnected"). `~/bin/claude-rc-watch.sh`
+  (started by the service) opens the live `/remote-control` menu ~25s after start and re-enables it, then sends the link to Telegram. Don't judge state from
+  tmux scrollback: a resumed chat replays old lines (including old "remote-control is active"). The live menu is the only trustworthy signal.
 - **Pi notifications** use a separate bot `@piadmin_cbr_bot` (online-after-boot message, Pi-Admin link, problem/resolved alerts every 5 min via `pi-health.timer`).
 - The Dimeo repo is also cloned at `~/dimeo-e2e` (`git pull` to get the latest of this file).
 - **GitHub access from the Pi:** deploy key `~/.ssh/github_dimeo` (read-write, this repo only; GitHub shows it as "Pi-Admin (cbr-pi)"), remote is SSH.

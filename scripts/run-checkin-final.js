@@ -25,11 +25,13 @@ const daysFor = (id) => (id.startsWith('psd-') ? PSD_DAYS : WEEKDAYS);
 const SELECTED_IDS = [
   'kingston-gallagher',
   'qbe',
-  'psd-manuka',
   'psd-woden',
   'psd-tuggeranong',
   'psd-queenbeyan',
   'suncorp-phillip',
+  // Last on purpose: Griffith-PO (same login) checks out ~6:15-6:35pm, so PSD-Manuka
+  // waits until the end of the batch (~6:40pm) to avoid two sessions on one account.
+  'psd-manuka',
 ];
 
 (async () => {

@@ -23,8 +23,8 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 20, startMinute: 35, windowMin: 15 }, // 8:35-8:50pm
-  saturday: { startHour: 18, startMinute: 20, windowMin: 10 }, // 6:20-6:30pm
+  weekday: { startHour: 20, startMinute: 35, windowMin: 15 }, // 8:35pm-8:50pm
+  saturday: { startHour: 18, startMinute: 20, windowMin: 10 }, // 6:20pm-6:30pm
 };
 
 // `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).
@@ -39,7 +39,7 @@ function computeTargets(base) {
   const checkinOffsetSec = simpleHash(dateKey + '-weston-checkin') % (windowMin * 60 + 1);
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
-  const delayMin = 160 + (simpleHash(dateKey + '-weston-checkout-delay') % 21); // 160..180 inclusive
+  const delayMin = 165 + (simpleHash(dateKey + '-weston-checkout-delay') % 16); // 165..180 inclusive
   const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
 
   return { dayType, checkinTarget, checkoutTarget, delayMin, dateKey };

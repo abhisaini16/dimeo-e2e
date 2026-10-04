@@ -1,5 +1,5 @@
 // Checks out of Kingston-PO at today's deterministic target: the same check-in moment
-// computed by run-kingston-checkin.js, plus a 140-160 min delay (also derived from
+// computed by run-kingston-checkin.js, plus a 145-160 min delay (also derived from
 // today's date hash, so this script independently arrives at the identical target
 // without needing to read any state back from the check-in run). One invocation per day.
 const sitesList = require('../tests/data/checkin-sites.json');

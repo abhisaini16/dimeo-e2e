@@ -1,6 +1,6 @@
-// Deterministic weekday-only randomness for Macquarie-PO (same approach as
-// lib/yass-schedule.js/lib/cooma-schedule.js): check-in lands somewhere in
-// 5:30-6:00pm Sydney time, check-out 75-90 min after that. No Saturday/Sunday shift.
+// Deterministic daily randomness for the Macquarie schedule (Mon-Fri; the planner skips weekends).
+// Hash of today's date -> the same targets are derived independently by every caller.
+// Check-in lands somewhere in 5:30pm-5:45pm; check-out 75-90 min after that.
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -13,16 +13,13 @@ function sydneyNow() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
 }
 
-// `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()). Returns null on any
-// day other than a weekday.
+// `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()) — its getFullYear/
+// getMonth/getDate/getDay are read as Sydney-local throughout this codebase.
 function computeTargets(base) {
-  const day = base.getDay();
-  if (day < 1 || day > 5) return null;
-
   const dateKey = `${base.getFullYear()}-${base.getMonth() + 1}-${base.getDate()}`;
 
   const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 17, 30, 0);
-  const checkinOffsetSec = simpleHash(dateKey + '-macquarie-checkin') % (30 * 60 + 1); // 0..1800 -> 5:30:00-6:00:00pm
+  const checkinOffsetSec = simpleHash(dateKey + '-macquarie-checkin') % (15 * 60 + 1); // 0..900 -> 5:30pm-5:45pm
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
   const delayMin = 75 + (simpleHash(dateKey + '-macquarie-checkout-delay') % 16); // 75..90 inclusive

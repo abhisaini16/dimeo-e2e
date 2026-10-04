@@ -23,8 +23,8 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 18, startMinute: 0, windowMin: 34 }, // 6:00-6:34pm
-  saturday: { startHour: 14, startMinute: 0, windowMin: 60 }, // 2:00-3:00pm (shared
+  weekday: { startHour: 18, startMinute: 0, windowMin: 15 }, // 6:00pm-6:15pm
+  saturday: { startHour: 14, startMinute: 0, windowMin: 15 }, // 2:00pm-2:15pm
   // with Belconnen-PO, but uses its own hash salt below so the actual randomized
   // landing time differs from Belconnen's)
 };

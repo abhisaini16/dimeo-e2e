@@ -23,8 +23,8 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 22, startMinute: 0, windowMin: 28 }, // 10:00-10:28pm
-  saturday: { startHour: 14, startMinute: 0, windowMin: 60 }, // 2:00-3:00pm
+  weekday: { startHour: 22, startMinute: 0, windowMin: 15 }, // 10:00pm-10:15pm
+  saturday: { startHour: 14, startMinute: 0, windowMin: 15 }, // 2:00pm-2:15pm
 };
 
 // `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).

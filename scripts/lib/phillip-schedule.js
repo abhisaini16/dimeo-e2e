@@ -1,6 +1,6 @@
-// Deterministic daily randomness for the Yass schedule (Mon-Fri; the planner skips weekends).
+// Deterministic daily randomness for the Phillip schedule (Mon-Fri; the planner skips weekends).
 // Hash of today's date -> the same targets are derived independently by every caller.
-// Check-in lands somewhere in 5:00am-5:15am; check-out 75-90 min after that.
+// Check-in lands somewhere in 8:00pm-8:10pm; check-out 90-105 min after that.
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -18,11 +18,11 @@ function sydneyNow() {
 function computeTargets(base) {
   const dateKey = `${base.getFullYear()}-${base.getMonth() + 1}-${base.getDate()}`;
 
-  const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 5, 0, 0);
-  const checkinOffsetSec = simpleHash(dateKey + '-yass-checkin') % (15 * 60 + 1); // 0..900 -> 5:00am-5:15am
+  const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 20, 0, 0);
+  const checkinOffsetSec = simpleHash(dateKey + '-phillip-checkin') % (10 * 60 + 1); // 0..600 -> 8:00pm-8:10pm
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
-  const delayMin = 75 + (simpleHash(dateKey + '-yass-checkout-delay') % 16); // 75..90 inclusive
+  const delayMin = 90 + (simpleHash(dateKey + '-phillip-checkout-delay') % 16); // 90..105 inclusive
   const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
 
   return { checkinTarget, checkoutTarget, delayMin, dateKey };

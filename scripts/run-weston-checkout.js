@@ -1,5 +1,5 @@
 // Checks out of Weston-PO at today's deterministic target: the same check-in
-// moment computed by run-weston-checkin.js, plus a 160-180 min delay (also derived
+// moment computed by run-weston-checkin.js, plus a 165-180 min delay (also derived
 // from today's date hash) — see lib/weston-schedule.js. One invocation per day.
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');

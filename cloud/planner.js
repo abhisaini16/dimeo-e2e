@@ -13,10 +13,11 @@ const SA = `dimeo-scheduler@${PROJECT}.iam.gserviceaccount.com`;
 // Container start + browser launch + login takes ~30-40s before the click happens.
 const LEAD_MS = 45_000;
 const DRY = process.argv.includes('--dry');
+const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(7); // dry-run only
 // These sites work Mon-Fri only (their schedule libs have no day-type of their own).
 // Public holidays are NOT special-cased: the script still runs and the live portal
 // reports no-active-shift when there's no shift.
-const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie']);
+const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie', 'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell']);
 
 const runUrl = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/dimeo-checkin:run`;
 const fmt = (d) => d.toLocaleTimeString('en-AU', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -52,14 +53,14 @@ async function enqueue(token, name, whenMs, jobName) {
 
   for (const site of SITES) {
     const lib = require(`../scripts/lib/${site}-schedule`);
-    const nowSyd = lib.sydneyNow();
+    const nowSyd = DRY && dateArg ? new Date(`${dateArg}T09:00:00`) : lib.sydneyNow();
     const weekend = nowSyd.getDay() === 0 || nowSyd.getDay() === 6;
     const t = MON_FRI_ONLY.has(site) && weekend ? null : lib.computeTargets(nowSyd);
     if (!t) { lines.push(`➖ ${site}: no shift today`); continue; }
     for (const [action, target] of [['checkin', t.checkinTarget], ['checkout', t.checkoutTarget]]) {
       const when = target.getTime() - LEAD_MS;
       const label = `${site} ${action} @ ${fmt(target)}`;
-      if (when <= now) { lines.push(`⏭ ${label} (already past, skipped)`); continue; }
+      if (when <= now && !(DRY && dateArg)) { lines.push(`⏭ ${label} (already past, skipped)`); continue; }
       if (DRY) { lines.push(`(dry) ${label}`); continue; }
       try {
         const res = await enqueue(token, `${site}-${action}-${t.dateKey.replace(/\W/g, '-')}`, when, `now-${site}-${action}`);

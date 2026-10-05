@@ -132,6 +132,15 @@ async function runGroup(group, { headless = true, mode = 'both', interSiteDelayM
       }
 
       if (!chosen.info.active) {
+        if (chosen.info.window && now < chosen.info.window.start) {
+          // The nearest shift hasn't started yet (e.g. a public holiday today means the
+          // only shift found is tomorrow's) — this is "no shift today", not a failure,
+          // even though it's within the 36h window checked above. Don't attempt it.
+          log(`NO SHIFT TODAY for ${siteKey}: nearest shift is ${chosen.info.dateLine} (${chosen.info.windowLine}), which hasn't started yet. No active shift found for today.`);
+          results.push({ site: siteKey, status: 'no-shift-today' });
+          announceNext(i);
+          continue;
+        }
         log(`NOTE: ${siteKey}'s cleaning window (${chosen.info.windowLine}) is outside the current time, but it's still listed as "${chosen.info.status}" — attempting anyway.`);
       }
 

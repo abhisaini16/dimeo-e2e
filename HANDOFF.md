@@ -54,6 +54,13 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
 - **Pi-Admin link after a reboot:** a resumed session (`--continue`) can lose its Remote Control link ("Remote Control disconnected"). `~/bin/claude-rc-watch.sh`
   (started by the service) opens the live `/remote-control` menu ~25s after start and re-enables it, then sends the link to Telegram. Don't judge state from
   tmux scrollback: a resumed chat replays old lines (including old "remote-control is active"). The live menu is the only trustworthy signal.
+- **Google Cloud access from the Pi (so Pi-Admin can maintain the Dimeo cloud side too):** `gcloud` is installed and signed in as the service account
+  `pi-admin-deployer@cbr-automation-510513.iam.gserviceaccount.com` (key file `~/.config/gcloud-keys/pi-admin-deployer.json`, chmod 600; revoke by deleting the key
+  or the account in Google Cloud IAM). Roles: Cloud Build editor, Cloud Run admin, Cloud Scheduler admin, Cloud Tasks admin, Artifact Registry writer, Secret Manager accessor
+  (can READ secret values, not list/describe), Storage object admin, Service Usage consumer, Logs viewer, plus act-as on dimeo-runner, dimeo-scheduler and the build/compute accounts.
+  NOT granted: owner, billing, IAM admin. Verified from the Pi: Cloud Run job, Scheduler, Cloud Tasks queue, Artifact Registry, Cloud Build, and reading `checkin-sites`.
+  `~/dimeo-e2e/tests/data/checkin-sites.json` on the Pi is the pulled credentials file (gitignored, chmod 600; refresh from Secret Manager `checkin-sites`).
+  gcloud is slow on the Pi (several seconds per call): run long sequences in the background writing to a file, since SSH can drop mid-command.
 - **Pi notifications** use a separate bot `@piadmin_cbr_bot` (online-after-boot message, Pi-Admin link, problem/resolved alerts every 5 min via `pi-health.timer`).
 - The Dimeo repo is also cloned at `~/dimeo-e2e` (`git pull` to get the latest of this file).
 - **GitHub access from the Pi:** deploy key `~/.ssh/github_dimeo` (read-write, this repo only; GitHub shows it as "Pi-Admin (cbr-pi)"), remote is SSH.

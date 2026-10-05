@@ -55,10 +55,10 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   (started by the service) opens the live `/remote-control` menu ~25s after start and re-enables it, then sends the link to Telegram. Don't judge state from
   tmux scrollback: a resumed chat replays old lines (including old "remote-control is active"). The live menu is the only trustworthy signal.
 - **Google Cloud access from the Pi (so Pi-Admin can maintain the Dimeo cloud side too):** `gcloud` is installed and signed in as the service account
-  `pi-admin-deployer@cbr-automation-510513.iam.gserviceaccount.com` (key file `~/.config/gcloud-keys/pi-admin-deployer.json`, chmod 600; revoke by deleting the key
-  or the account in Google Cloud IAM). Roles: Cloud Build editor, Cloud Run admin, Cloud Scheduler admin, Cloud Tasks admin, Artifact Registry writer, Secret Manager accessor
-  (can READ secret values, not list/describe), Storage object admin, Service Usage consumer, Logs viewer, plus act-as on dimeo-runner, dimeo-scheduler and the build/compute accounts.
-  NOT granted: owner, billing, IAM admin. Verified from the Pi: Cloud Run job, Scheduler, Cloud Tasks queue, Artifact Registry, Cloud Build, and reading `checkin-sites`.
+  `pi-admin-deployer@cbr-automation-510513.iam.gserviceaccount.com` (key file `~/.config/gcloud-keys/pi-admin-deployer.json`, chmod 600). On the owner's explicit
+  instruction (2026-10-05) it holds **roles/owner on the project** plus Secret Manager admin, on top of Cloud Build / Run / Scheduler / Tasks / Artifact Registry roles.
+  That means it can change IAM, read and write every secret, delete resources and unlink billing: treat it with care, back up before destructive changes, and ask the owner
+  before anything that spends money, touches billing, or changes who has access. Revoke by deleting the key or the account in Google Cloud IAM.
   `~/dimeo-e2e/tests/data/checkin-sites.json` on the Pi is the pulled credentials file (gitignored, chmod 600; refresh from Secret Manager `checkin-sites`).
   gcloud is slow on the Pi (several seconds per call): run long sequences in the background writing to a file, since SSH can drop mid-command.
 - **Pi notifications** use a separate bot `@piadmin_cbr_bot` (online-after-boot message, Pi-Admin link, problem/resolved alerts every 5 min via `pi-health.timer`).

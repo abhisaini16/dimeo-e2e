@@ -36,6 +36,12 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
 - `pkill -f`/`pgrep -f` patterns that match the ssh command's own text kill the session. Use `[c]laude` style patterns or PIDs.
 - Deploy: `gcloud builds submit --tag <image> --region australia-southeast1 .` then `gcloud run jobs update dimeo-checkin --image=<image> --region=...`,
   then `node commands/cloud/deploy-scheduler.js` (creates/updates/prunes Scheduler jobs). On Windows call `gcloud.cmd`.
+- **`tests/data/sites.json` edits need a rebuild+redeploy, not just a git push.** It's `COPY`'d into the Docker image at build time
+  (Dockerfile), unlike `tests/data/checkin-sites.json` which is pulled from Secret Manager `checkin-sites` fresh at container
+  start (that one *does* update live just by pushing a new secret version — the job mounts `latest`). Bit us 2026-10-05/06:
+  fixed Griffith-PO's wrong address in git, but the running job kept failing on the stale baked-in address until the image
+  was rebuilt. Also: a site's shift-list status label (e.g. "Checked in") is not reliable live state — trust the script's
+  actual check-in/check-out result, not the card label.
 - Verify a change by triggering the real path: `gcloud scheduler jobs run dimeo-planner --location=australia-southeast1`, then list the tasks.
 
 ## 2. Command51 QR scans: Raspberry Pi (code lives ONLY on the Pi, not in git)

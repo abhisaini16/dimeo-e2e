@@ -21,7 +21,7 @@
   { "name": "Kingston-Gallagher", "manager": "Isa", "address": "Wentworth Practice", "lat": -35.31755737, "lon": 149.1466272 },
   { "name": "Suncorp-Phillip", "manager": "Isa", "address": "Shea street", "lat": -35.3522553742839, "lon": 149.089998936594 },
   { "name": "PSD-Manuka", "manager": "Daniel", "address": "Shop 30, Manuka Terrace, Franklin Street", "lat": -35.32030554, "lon": 149.1332969 },
-  { "name": "Griffith-PO", "manager": "Daniel", "address": "Shop 30, Manuka Terrace, Franklin Street", "lat": -35.32030554, "lon": 149.1332969, "note": "shares coordinates with PSD-Manuka (per user)" },
+  { "name": "Griffith-PO", "manager": "Daniel", "address": "18 Flinders Way, Griffith, ACT", "lat": -35.3208230, "lon": 149.1341359 },
   { "name": "PSD-Queenbeyan", "manager": "Isa", "address": "Riverside Plaza, 131 Monaro St, Queanbeyan NSW 2620", "lat": -35.35235562, "lon": 149.2355386 },
   { "name": "PSD-Tuggeranong", "manager": "Isa", "address": "South Point, shop 75/210 Anketell St, Greenway ACT 2900", "lat": -35.41624342, "lon": 149.0668368 },
   { "name": "PSD-Woden", "manager": "Isa", "address": "Westfield Woden, Level/2 Keltie St, Phillip ACT 2606", "lat": -35.34529635, "lon": 149.0860939 },

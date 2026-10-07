@@ -7,7 +7,7 @@ Last updated: 2026-10-05. **Secrets are never in this repo** (public). Logins li
 There are THREE separate systems. Don't confuse them.
 
 ## 1. Dimeo check-ins: Google Cloud (this repo)
-Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) and check cleaners in/out at 17 dedicated sites plus a daily batch.
+Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) and check cleaners in/out at 18 dedicated sites plus a daily batch.
 - **Where it runs:** Google Cloud project `cbr-automation-510513`, region `australia-southeast1`. One Cloud Run Job `dimeo-checkin`
   (image `.../dimeo/checkin:latest`, built from the root `Dockerfile`; it copies `scripts/` and `commands/cloud/`).
 - **Scheduling (Cloud Scheduler, Australia/Sydney, so no DST hacks):**
@@ -18,10 +18,12 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
     Kingston-Gallagher, QBE, Suncorp-Phillip are check-in only; PSD-Manuka is held until 6:45pm (shares a login with Griffith).
   - `dimeo-bega-medical` 10:00pm Mon-Fri, check-in only.
 - **Per-site windows** are in `scripts/lib/<site>-schedule.js` (deterministic hash of the date). Check-in windows are 10-15 min wide on 5-minute marks.
-  Mon-Fri only: yass (5:00-5:15pm), cooma (5:45-6:00pm), macquarie, bega-po, merimbula, griffith, narooma, mawson, phillip, mitchell.
+  Mon-Fri only: yass (5:00-5:15pm), cooma (5:45-6:00pm), macquarie, bega-po, merimbula, griffith, narooma, mawson, phillip, mitchell, dickson (6:00-6:10pm).
   Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen, weston, greenway, city-post (Canberra GPO). No Sunday shifts.
   Public holidays are NOT special-cased: the script runs and the portal answers "No active shift today".
 - **Clash rules in the planner:** same login never within 10 min of itself (incl. batch/Bega slots); any two actions >= 3 min apart.
+  Mitchell, Fyshwick, Greenway, Phillip and Dickson all share one login (`sainishikha005@gmail.com`, 2026-10-07) — the planner's
+  clash-resolution spaces all five automatically; verified with `--dry` and a real `dimeo-planner` trigger, no manual spacing needed.
 - **Telegram:** bot `@Dimeo_checkin_CBR_bot` (token in Secret Manager `telegram-bot-token`, chat id `telegram-chat-id`). Results via `scripts/lib/notify.js`.
   Menu bot (tap a site to check in+out now) = Cloud Function `dimeo-telegram-bot` (`commands/cloud/telegram-bot/`).
 - **Budget:** Cloud Billing budget A$20 -> alerts at A$5/10/15/20 to Telegram (function `dimeo-budget-guard`). The A$12 hard cap exists but is OFF

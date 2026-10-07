@@ -26,7 +26,7 @@ const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(
 // These sites work Mon-Fri only (their schedule libs have no day-type of their own).
 // Public holidays are NOT special-cased: the script still runs and the live portal
 // reports no-active-shift when there's no shift.
-const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie', 'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell']);
+const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie', 'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell', 'dickson']);
 
 const runUrl = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/dimeo-checkin:run`;
 // Normal 12-hour clock for Telegram (5:19 pm), and a sortable HHMM for task names.

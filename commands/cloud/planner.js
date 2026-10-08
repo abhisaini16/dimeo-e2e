@@ -21,15 +21,32 @@ const LEAD_MS = 45_000;
 const MIN = 60_000;
 const SAME_ACCOUNT_GAP = 10 * MIN;
 const GLOBAL_GAP = 3 * MIN;
-// Narrower per-account overrides: owner asked (2026-10-08) for a wider gap after a
-// checkout before the next site's check-in starts, for these two shared logins
-// specifically. `resolve()` enforces this between EVERY pair of same-account actions
-// (not just checkout->checkin), which is a superset guarantee and simpler to reason about.
-const ACCOUNT_GAP_OVERRIDE = {
-  'sainishikha005@gmail.com': 20 * MIN,
-  'aashuahlawat2@gmail.com': 20 * MIN,
-};
-const accountGap = (account) => ACCOUNT_GAP_OVERRIDE[account] || SAME_ACCOUNT_GAP;
+// Wider, randomised per-account gaps: owner asked (2026-10-08) for 25-37 min between
+// different sites sharing one of these specific shared logins (not the default 10 min,
+// and not one fixed number either — a different random-but-deterministic value per
+// incoming event, same hash-of-the-date pattern as the per-site schedule libs use, so
+// re-running the planner the same day always lands on the same gap). `resolve()` enforces
+// this between EVERY pair of same-account actions (not just checkout->checkin), which is
+// a superset guarantee and simpler to reason about.
+const RANDOM_GAP_ACCOUNTS = new Set([
+  'sainishikha005@gmail.com',
+  'aashuahlawat2@gmail.com',
+  'aus362@gmail.com',
+  'abhiaus980@gmail.com',
+  'tzangpo363@gmail.com',
+]);
+const RANDOM_GAP_MIN = 25 * MIN;
+const RANDOM_GAP_SPAN = 12 * 60; // 0..12 min, in seconds
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+function accountGap(e) {
+  if (!RANDOM_GAP_ACCOUNTS.has(e.account)) return SAME_ACCOUNT_GAP;
+  const offsetSec = simpleHash(`${e.dateKey}-gap-${e.account}-${e.site}-${e.action}`) % (RANDOM_GAP_SPAN + 1);
+  return RANDOM_GAP_MIN + offsetSec * 1000;
+}
 const DRY = process.argv.includes('--dry');
 const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(7); // dry-run only
 // These sites work Mon-Fri only (their schedule libs have no day-type of their own).
@@ -78,7 +95,7 @@ function resolve(events, blocks) {
     for (let guard = 0; guard < 200; guard++) {
       let moved = false;
       for (const p of placed) {
-        const gap = p.account === e.account && p.site !== e.site ? accountGap(e.account) : GLOBAL_GAP;
+        const gap = p.account === e.account && p.site !== e.site ? accountGap(e) : GLOBAL_GAP;
         if (Math.abs(t - p.time) < gap) { t = p.time + gap; moved = true; }
       }
       for (const b of blocks) {

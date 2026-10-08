@@ -22,22 +22,42 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen, weston, greenway, city-post (Canberra GPO). No Sunday shifts.
   Public holidays are NOT special-cased: the script runs and the portal answers "No active shift today".
 - **Clash rules in the planner:** same login never within 10 min of itself (incl. batch/Bega slots); any two actions >= 3 min apart.
-  **Two accounts get a wider 20-min gap** (`ACCOUNT_GAP_OVERRIDE` in `planner.js`, owner's request 2026-10-08): `sainishikha005@gmail.com`
-  (Mitchell/Fyshwick/Greenway/Phillip) and `aashuahlawat2@gmail.com` (Kingston/Macquarie/Dickson). Everyone else keeps the default 10 min.
+  **Five shared-login groups get a wider, randomised 25-37 min gap instead** (`RANDOM_GAP_ACCOUNTS`/`accountGap()` in `planner.js`, owner's
+  request 2026-10-08, superseding an earlier flat 20-min version the same day): `sainishikha005@gmail.com` (Mitchell/Greenway/Phillip),
+  `aashuahlawat2@gmail.com` (Kingston/Macquarie/Dickson), `aus362@gmail.com` (Weston/Mawson/Griffith), `abhiaus980@gmail.com`
+  (Fyshwick/Queenbeyan), `tzangpo363@gmail.com` (Belconnen, currently solo). The 25-37 value is picked deterministically per
+  (date, account, site, action) via a hash, same pattern as the per-site schedule libs, so it varies day to day and action to action
+  without being literally random (re-running the planner the same day is still idempotent). Everyone else keeps the default 10 min.
   `resolve()` enforces the gap between every pair of same-account actions regardless of action type, which is a superset of "N min after
   a checkout before the next site's check-in." Planner clash-resolution spaces each group automatically on *future* days — verified with
-  `--dry` and a real `dimeo-planner` trigger.
-  **Gotcha: re-triggering the planner after deleting a task can cascade into duplicates.** `resolve()` recomputes the WHOLE day from
-  each site's independent hash every time, so pushing one event later (e.g. widening a gap) can shift a different site's placement too
-  (even one not directly touched) — and since the OLD task for that site was never deleted, you end up with two tasks for the same
-  site+action at two different times. Always re-check the full task list after a re-trigger, not just the task you expected to change,
-  and delete any stale duplicates left behind. Hit this 2026-10-08 widening Kingston/Dickson/Phillip/Mitchell's gaps to 20 min.
-  **Gotcha:** changing a login mid-day does NOT fix tasks for TODAY that were already queued by the morning's planner run under the
-  old account grouping — those tasks' exact times are frozen at creation (`enqueue()` is a no-op on an existing task name), so if the
-  new shared login's sites happen to land within 10 min of each other, it's a live clash that re-running the planner won't repair on
-  its own. Fix: `gcloud tasks list --queue=dimeo-actions --location=australia-southeast1`, find the too-close pair for today, delete
-  the later one (`gcloud tasks delete <name>`), then re-trigger `gcloud scheduler jobs run dimeo-planner` to recreate it correctly
-  spaced. Hit this exactly once (2026-10-08: Macquarie/Kingston checkins were 9 min apart after moving both to the new login).
+  `--dry` and a real `dimeo-planner` trigger each time this changed.
+
+  **Gotcha: fixing TODAY's queue after a login or gap-rule change is genuinely hard — don't do it ad hoc.** Changing a login or the gap
+  rule mid-day does NOT fix tasks already queued by the morning's planner run; those are frozen at creation. The safe procedure, learned
+  the hard way on 2026-10-08:
+  1. Deploy the code/credential change first (rebuild+redeploy if `planner.js` changed; just a new Secret Manager version if only
+     `checkin-sites.json` changed).
+  2. Compute the exact CORRECT plan for today: patch the `if (DRY) { lines.push(...) }` line in a scratch copy of `planner.js` to print
+     `${e.site}-${e.action}-${e.dateKey...}-${hhmm(e.time)}` (the literal task name), then run `node cloud/planner.js --dry --date=<today>`
+     from a directory laid out like the container (`scripts/`, `cloud/`, `tests/` as siblings — a plain `cd commands/cloud && node planner.js`
+     breaks its relative requires).
+  3. List the real queue (`gcloud tasks list --queue=dimeo-actions --location=australia-southeast1`) and diff the two **exact name** lists
+     (`comm -23`/`comm -13` on sorted files) — don't eyeball it or compare by clock time, the margin for a transcription slip is too high
+     once more than 2-3 sites are affected.
+  4. Delete every real task that ISN'T in the expected list (stale/duplicate). Leave everything that already matches exactly alone.
+  5. Re-trigger `gcloud scheduler jobs run dimeo-planner --location=australia-southeast1` once, then re-list and diff again — a single
+     retrigger can still cascade a shift onto an untouched site (see below), so always re-verify, don't assume one pass is enough.
+  **Why ad hoc fixes fail:** `resolve()` recomputes the WHOLE day from scratch every run, so widening one gap can shift a DIFFERENT site's
+  placement too (even one you didn't touch) via the chained push-forward logic — and since that other site's old task was never deleted,
+  you get a stale duplicate you didn't expect. This compounded across several re-triggers on 2026-10-08 into ~15 stray duplicate tasks
+  across unrelated sites (yass, cooma, city-post, queenbeyan, griffith) that only a full name-exact diff caught.
+  **Gotcha: a "✅ already exists" (409) from `enqueue()` can actually mean "rejected — name reuse blocked", not "correctly scheduled".**
+  Cloud Tasks won't reuse a task name for ~1h after it was deleted, and that rejection ALSO surfaces as HTTP 409 — indistinguishable in
+  the code from a real duplicate. If a fresh computation happens to reuse a name you deleted earlier the same session (plausible: the
+  randomised gap can land back on a value you'd already tried), the planner logs `☑️` (looks fine) but **nothing is actually scheduled**.
+  Caught this 2026-10-08 only via the exact-name diff above (two tasks silently missing from the real queue despite a clean-looking
+  planner run). Fix: create that one task manually with a different name, same payload:
+  `gcloud tasks create-http-task <site>-<action>-<dateKey>-<hhmm>-b --queue=dimeo-actions --location=australia-southeast1 --url="https://run.googleapis.com/v2/projects/cbr-automation-510513/locations/australia-southeast1/jobs/dimeo-checkin:run" --method=POST --header="Content-Type: application/json" --body-content='{"overrides":{"containerOverrides":[{"args":["now-<site>-<action>"]}]}}' --oauth-service-account-email=dimeo-scheduler@cbr-automation-510513.iam.gserviceaccount.com --schedule-time=<ISO time, resolved time minus 45s>`.
 - **Telegram:** bot `@Dimeo_checkin_CBR_bot` (token in Secret Manager `telegram-bot-token`, chat id `telegram-chat-id`). Results via `scripts/lib/notify.js`.
   Menu bot (tap a site to check in+out now) = Cloud Function `dimeo-telegram-bot` (`commands/cloud/telegram-bot/`).
 - **Budget:** Cloud Billing budget A$20 -> alerts at A$5/10/15/20 to Telegram (function `dimeo-budget-guard`). The A$12 hard cap exists but is OFF

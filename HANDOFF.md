@@ -22,8 +22,15 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen, weston, greenway, city-post (Canberra GPO). No Sunday shifts.
   Public holidays are NOT special-cased: the script runs and the portal answers "No active shift today".
 - **Clash rules in the planner:** same login never within 10 min of itself (incl. batch/Bega slots); any two actions >= 3 min apart.
-  Mitchell, Fyshwick, Greenway, Phillip and Dickson all share one login (`sainishikha005@gmail.com`, 2026-10-07) — the planner's
-  clash-resolution spaces all five automatically; verified with `--dry` and a real `dimeo-planner` trigger, no manual spacing needed.
+  Shared-login groups as of 2026-10-08: Mitchell/Fyshwick/Greenway/Phillip share `sainishikha005@gmail.com`; Kingston/Macquarie/Dickson
+  share `Aashuahlawat2@gmail.com` (Dickson moved out of the Shikha group into this one). Planner clash-resolution spaces each group
+  automatically on *future* days — verified with `--dry` and a real `dimeo-planner` trigger.
+  **Gotcha:** changing a login mid-day does NOT fix tasks for TODAY that were already queued by the morning's planner run under the
+  old account grouping — those tasks' exact times are frozen at creation (`enqueue()` is a no-op on an existing task name), so if the
+  new shared login's sites happen to land within 10 min of each other, it's a live clash that re-running the planner won't repair on
+  its own. Fix: `gcloud tasks list --queue=dimeo-actions --location=australia-southeast1`, find the too-close pair for today, delete
+  the later one (`gcloud tasks delete <name>`), then re-trigger `gcloud scheduler jobs run dimeo-planner` to recreate it correctly
+  spaced. Hit this exactly once (2026-10-08: Macquarie/Kingston checkins were 9 min apart after moving both to the new login).
 - **Telegram:** bot `@Dimeo_checkin_CBR_bot` (token in Secret Manager `telegram-bot-token`, chat id `telegram-chat-id`). Results via `scripts/lib/notify.js`.
   Menu bot (tap a site to check in+out now) = Cloud Function `dimeo-telegram-bot` (`commands/cloud/telegram-bot/`).
 - **Budget:** Cloud Billing budget A$20 -> alerts at A$5/10/15/20 to Telegram (function `dimeo-budget-guard`). The A$12 hard cap exists but is OFF

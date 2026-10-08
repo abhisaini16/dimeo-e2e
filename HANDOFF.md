@@ -19,7 +19,8 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   - `dimeo-bega-medical` 10:00pm Mon-Fri, check-in only.
 - **Per-site windows** are in `scripts/lib/<site>-schedule.js` (deterministic hash of the date). Check-in windows are 10-15 min wide on 5-minute marks.
   Mon-Fri only: yass (5:00-5:15pm), cooma (5:45-6:00pm), macquarie, bega-po, merimbula, griffith, narooma, mawson, phillip, mitchell, dickson (6:00-6:10pm).
-  Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen, weston, greenway, city-post (Canberra GPO). No Sunday shifts.
+  Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen (6:15-6:30pm, same window both day-types since 2026-10-08), weston,
+  greenway, city-post (Canberra GPO). No Sunday shifts.
   Public holidays are NOT special-cased: the script runs and the portal answers "No active shift today".
 - **Clash rules in the planner:** same login never within 10 min of itself (incl. batch/Bega slots); any two actions >= 3 min apart.
   **Five shared-login groups get a wider, randomised 25-37 min gap instead** (`RANDOM_GAP_ACCOUNTS`/`accountGap()` in `planner.js`, owner's
@@ -31,6 +32,14 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   `resolve()` enforces the gap between every pair of same-account actions regardless of action type, which is a superset of "N min after
   a checkout before the next site's check-in." Planner clash-resolution spaces each group automatically on *future* days — verified with
   `--dry` and a real `dimeo-planner` trigger each time this changed.
+
+  **A plain pairwise gap is NOT enough — whole sessions must not overlap either (fixed 2026-10-08).** Owner caught a real case: Greenway
+  (Shikha login) was checked in 7:48-8:51pm, but Phillip (same login) checked in at 8:20pm — 32 min after Greenway's *checkin*, which
+  satisfied the pairwise gap, but Phillip's session started while Greenway's was still open. `sequenceAccountBlocks()` now orders each
+  `RANDOM_GAP_ACCOUNTS` login's sites by original checkin time and pushes each one's whole checkin->checkout session forward (as a
+  unit, preserving its own duration) until it starts at or after the previous site's checkout + the 25-37 min gap. Runs before the
+  generic `resolve()` pass, which still handles cross-account/global spacing on top. Verified with `--dry` for a weekday and Saturday:
+  every site's session now starts strictly after the previous same-login site's session ends.
 
   **Gotcha: fixing TODAY's queue after a login or gap-rule change is genuinely hard — don't do it ad hoc.** Changing a login or the gap
   rule mid-day does NOT fix tasks already queued by the morning's planner run; those are frozen at creation. The safe procedure, learned
@@ -56,8 +65,12 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   the code from a real duplicate. If a fresh computation happens to reuse a name you deleted earlier the same session (plausible: the
   randomised gap can land back on a value you'd already tried), the planner logs `☑️` (looks fine) but **nothing is actually scheduled**.
   Caught this 2026-10-08 only via the exact-name diff above (two tasks silently missing from the real queue despite a clean-looking
-  planner run). Fix: create that one task manually with a different name, same payload:
-  `gcloud tasks create-http-task <site>-<action>-<dateKey>-<hhmm>-b --queue=dimeo-actions --location=australia-southeast1 --url="https://run.googleapis.com/v2/projects/cbr-automation-510513/locations/australia-southeast1/jobs/dimeo-checkin:run" --method=POST --header="Content-Type: application/json" --body-content='{"overrides":{"containerOverrides":[{"args":["now-<site>-<action>"]}]}}' --oauth-service-account-email=dimeo-scheduler@cbr-automation-510513.iam.gserviceaccount.com --schedule-time=<ISO time, resolved time minus 45s>`.
+  planner run; then FIVE more on a second round of the same fix-cycle a bit later the same day, as yet more recomputed names landed back
+  on ones deleted earlier). **This will keep happening within any ~1h window where you repeatedly delete+recompute the same site's
+  tasks** — budget for a second verification pass, not just one. Fix: create that one task manually with a different name, same payload:
+  `gcloud tasks create-http-task <site>-<action>-<dateKey>-<hhmm>-b --queue=dimeo-actions --location=australia-southeast1 --url="https://run.googleapis.com/v2/projects/cbr-automation-510513/locations/australia-southeast1/jobs/dimeo-checkin:run" --method=POST --header="Content-Type: application/json" --body-content='{"overrides":{"containerOverrides":[{"args":["now-<site>-<action>"]}]}}' --oauth-service-account-email=dimeo-scheduler@cbr-automation-510513.iam.gserviceaccount.com --schedule-time=<ISO time, resolved time minus 45s>`
+  (if `-b` is ALSO blocked because it too was tried earlier, use `-b2`, etc.). After creating manually, re-run the exact-name diff
+  (ignoring any `-b`/`-b2` suffix) to confirm every expected site+action+time actually exists under some name.
 - **Telegram:** bot `@Dimeo_checkin_CBR_bot` (token in Secret Manager `telegram-bot-token`, chat id `telegram-chat-id`). Results via `scripts/lib/notify.js`.
   Menu bot (tap a site to check in+out now) = Cloud Function `dimeo-telegram-bot` (`commands/cloud/telegram-bot/`).
 - **Budget:** Cloud Billing budget A$20 -> alerts at A$5/10/15/20 to Telegram (function `dimeo-budget-guard`). The A$12 hard cap exists but is OFF

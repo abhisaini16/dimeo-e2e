@@ -21,6 +21,15 @@ const LEAD_MS = 45_000;
 const MIN = 60_000;
 const SAME_ACCOUNT_GAP = 10 * MIN;
 const GLOBAL_GAP = 3 * MIN;
+// Narrower per-account overrides: owner asked (2026-10-08) for a wider gap after a
+// checkout before the next site's check-in starts, for these two shared logins
+// specifically. `resolve()` enforces this between EVERY pair of same-account actions
+// (not just checkout->checkin), which is a superset guarantee and simpler to reason about.
+const ACCOUNT_GAP_OVERRIDE = {
+  'sainishikha005@gmail.com': 20 * MIN,
+  'aashuahlawat2@gmail.com': 20 * MIN,
+};
+const accountGap = (account) => ACCOUNT_GAP_OVERRIDE[account] || SAME_ACCOUNT_GAP;
 const DRY = process.argv.includes('--dry');
 const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(7); // dry-run only
 // These sites work Mon-Fri only (their schedule libs have no day-type of their own).
@@ -69,7 +78,7 @@ function resolve(events, blocks) {
     for (let guard = 0; guard < 200; guard++) {
       let moved = false;
       for (const p of placed) {
-        const gap = p.account === e.account && p.site !== e.site ? SAME_ACCOUNT_GAP : GLOBAL_GAP;
+        const gap = p.account === e.account && p.site !== e.site ? accountGap(e.account) : GLOBAL_GAP;
         if (Math.abs(t - p.time) < gap) { t = p.time + gap; moved = true; }
       }
       for (const b of blocks) {

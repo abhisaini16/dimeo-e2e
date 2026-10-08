@@ -8,7 +8,7 @@
 // targets from scripts/lib/<site>-schedule.js, and schedules one short job per action.
 // Those jobs set MANUAL_RUN=true so the script acts immediately rather than sleeping.
 const SITES = ['yass', 'cooma', 'macquarie', 'queenbeyan', 'kingston', 'fyshwick', 'belconnen', 'weston', 'greenway',
-  'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell', 'city-post', 'dickson'];
+  'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell', 'city-post', 'city-post-rajat', 'dickson'];
 
 const jobs = {};
 for (const site of SITES) {

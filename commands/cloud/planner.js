@@ -9,6 +9,10 @@
 //     apart, so they always happen strictly one after the other. The 6pm batch and the
 //     10pm Bega-Medical job are treated as reserved slots for their accounts.
 //   * ANY login: no two actions closer than GLOBAL_GAP, so logins don't bunch up.
+//   * RANDOM_GAP_ACCOUNTS logins additionally get whole-session non-overlap: see
+//     sequenceAccountBlocks() below — one site's checkin->checkout session can't start
+//     until the previous site's session (same login) has ended plus a 25-37 min gap,
+//     not just a point-in-time gap between nearest events.
 const { SITES } = require('./jobs');
 const { sendTelegramText } = require('../scripts/lib/notify');
 
@@ -46,6 +50,48 @@ function accountGap(e) {
   if (!RANDOM_GAP_ACCOUNTS.has(e.account)) return SAME_ACCOUNT_GAP;
   const offsetSec = simpleHash(`${e.dateKey}-gap-${e.account}-${e.site}-${e.action}`) % (RANDOM_GAP_SPAN + 1);
   return RANDOM_GAP_MIN + offsetSec * 1000;
+}
+
+// For a RANDOM_GAP_ACCOUNTS login, a plain pairwise gap between nearest events isn't
+// enough: two sites' checkin->checkout sessions can still overlap in time even when
+// their checkin times are individually spaced apart (e.g. Greenway open 7:48-8:51pm,
+// Phillip checkin 8:20pm — 32 min after Greenway's checkin, which looks "spaced", but
+// Phillip's session starts while Greenway's is still open). Owner flagged this
+// 2026-10-08: the two sites' sessions must not overlap at all, with the gap measured
+// from one checkout to the next checkin. Fix: sequence each account's sites as
+// non-overlapping blocks (ordered by original checkin time) BEFORE the generic
+// resolve() pass below runs — each site keeps its own checkin->checkout duration, only
+// shifted forward as a whole when it would otherwise start before the previous site's
+// checkout+gap.
+function sequenceAccountBlocks(rawTargets, sites, acct) {
+  const byAccount = new Map();
+  for (const site of sites) {
+    const t = rawTargets[site];
+    if (!t) continue;
+    const account = acct[site];
+    if (!RANDOM_GAP_ACCOUNTS.has(account)) continue;
+    if (!byAccount.has(account)) byAccount.set(account, []);
+    byAccount.get(account).push(site);
+  }
+  for (const [account, group] of byAccount) {
+    group.sort((a, b) => rawTargets[a].checkinTarget - rawTargets[b].checkinTarget);
+    let prevCheckout = null;
+    for (const site of group) {
+      const t = rawTargets[site];
+      const origCheckin = t.checkinTarget.getTime();
+      let newCheckin = origCheckin;
+      if (prevCheckout !== null) {
+        const gap = accountGap({ account, site, action: 'checkin', dateKey: t.dateKey });
+        newCheckin = Math.max(origCheckin, prevCheckout + gap);
+      }
+      const shift = newCheckin - origCheckin;
+      if (shift > 0) {
+        t.checkinTarget = new Date(origCheckin + shift);
+        t.checkoutTarget = new Date(t.checkoutTarget.getTime() + shift);
+      }
+      prevCheckout = t.checkoutTarget.getTime();
+    }
+  }
 }
 const DRY = process.argv.includes('--dry');
 const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(7); // dry-run only
@@ -143,10 +189,16 @@ async function enqueue(token, name, whenMs, jobName) {
   const base = DRY && dateArg ? new Date(`${dateArg}T09:00:00`) : first.sydneyNow();
   const weekend = base.getDay() === 0 || base.getDay() === 6;
 
-  const events = [];
+  const rawTargets = {};
   for (const site of SITES) {
     const lib = require(`../scripts/lib/${site}-schedule`);
-    const t = MON_FRI_ONLY.has(site) && weekend ? null : lib.computeTargets(base);
+    rawTargets[site] = MON_FRI_ONLY.has(site) && weekend ? null : lib.computeTargets(base);
+  }
+  sequenceAccountBlocks(rawTargets, SITES, acct);
+
+  const events = [];
+  for (const site of SITES) {
+    const t = rawTargets[site];
     if (!t) { lines.push(`➖ ${site}: no shift today`); continue; }
     if (!acct[site]) throw new Error(`no account for ${site} in checkin-sites.json`);
     for (const [action, target] of [['checkin', t.checkinTarget], ['checkout', t.checkoutTarget]]) {

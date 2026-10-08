@@ -1,6 +1,7 @@
-// Deterministic daily randomness for the Belconnen-PO schedule. Day-type-aware, same
-// approach as lib/fyshwick-schedule.js/lib/kingston-schedule.js: a late-evening window
-// on weekdays, a different afternoon window on Saturdays, no shift on Sundays.
+// Deterministic daily randomness for the Belconnen-PO schedule (owner's request,
+// 2026-10-08): check-in 6:15-6:30pm, check-out ~1.5h later, weekday and Saturday alike,
+// no shift on Sundays. Day-type split kept (vs. a flat Mon-Fri set) for consistency
+// with the other lib/<site>-schedule.js files and in case weekday/Saturday ever diverge.
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -23,8 +24,8 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 22, startMinute: 0, windowMin: 15 }, // 10:00pm-10:15pm
-  saturday: { startHour: 14, startMinute: 0, windowMin: 15 }, // 2:00pm-2:15pm
+  weekday: { startHour: 18, startMinute: 15, windowMin: 15 }, // 6:15pm-6:30pm
+  saturday: { startHour: 18, startMinute: 15, windowMin: 15 }, // 6:15pm-6:30pm
 };
 
 // `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).
@@ -39,9 +40,7 @@ function computeTargets(base) {
   const checkinOffsetSec = simpleHash(dateKey + '-belconnen-checkin') % (windowMin * 60 + 1);
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
-  // Weekday checkout can land past midnight (e.g. 10:28pm start + up to 120 min);
-  // that's fine, checkoutTarget below naturally rolls onto the next calendar date.
-  const delayMin = 105 + (simpleHash(dateKey + '-belconnen-checkout-delay') % 16); // 105..120 inclusive
+  const delayMin = 85 + (simpleHash(dateKey + '-belconnen-checkout-delay') % 11); // 85..95 inclusive (~1.5h)
   const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
 
   return { dayType, checkinTarget, checkoutTarget, delayMin, dateKey };

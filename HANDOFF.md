@@ -7,7 +7,8 @@ Last updated: 2026-10-05. **Secrets are never in this repo** (public). Logins li
 There are THREE separate systems. Don't confuse them.
 
 ## 1. Dimeo check-ins: Google Cloud (this repo)
-Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) and check cleaners in/out at 18 dedicated sites plus a daily batch.
+Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) and check cleaners in/out at 19 dedicated sites plus a daily batch
+(Canberra-GPO counts as one site but has two independent accounts/people checking in — see below).
 - **Where it runs:** Google Cloud project `cbr-automation-510513`, region `australia-southeast1`. One Cloud Run Job `dimeo-checkin`
   (image `.../dimeo/checkin:latest`, built from the root `Dockerfile`; it copies `scripts/` and `commands/cloud/`).
 - **Scheduling (Cloud Scheduler, Australia/Sydney, so no DST hacks):**
@@ -19,8 +20,13 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   - `dimeo-bega-medical` 10:00pm Mon-Fri, check-in only.
 - **Per-site windows** are in `scripts/lib/<site>-schedule.js` (deterministic hash of the date). Check-in windows are 10-15 min wide on 5-minute marks.
   Mon-Fri only: yass (5:00-5:15pm), cooma (5:45-6:00pm), macquarie, bega-po, merimbula, griffith, narooma, mawson, phillip, mitchell, dickson (6:00-6:10pm).
-  Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen (6:15-6:30pm, same window both day-types since 2026-10-08), weston,
-  greenway, city-post (Canberra GPO). No Sunday shifts.
+  Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen (6:15-6:30pm, same window both day-types since 2026-10-08), weston, greenway.
+  No Sunday shifts.
+  **Canberra GPO has two people, two separate site IDs, same physical site:** `city-post` (Kinley, existing) and `city-post-rajat`
+  (Rajat, added 2026-10-08, `rajatahuja57@gmail.com`). Both check in independently 6:15-6:30pm, check out ~2.5-2.75h later — different
+  schedule-lib hash salts (`lib/city-post-schedule.js` / `lib/city-post-rajat-schedule.js`) keep their random times from landing on the
+  same minute. They are NOT a shared login (two different accounts), so none of the `RANDOM_GAP_ACCOUNTS`/`sequenceAccountBlocks()`
+  machinery applies — only the default 3-min `GLOBAL_GAP` keeps them from colliding, same as any two unrelated actions.
   Public holidays are NOT special-cased: the script runs and the portal answers "No active shift today".
 - **Clash rules in the planner:** same login never within 10 min of itself (incl. batch/Bega slots); any two actions >= 3 min apart.
   **Five shared-login groups get a wider, randomised 25-37 min gap instead** (`RANDOM_GAP_ACCOUNTS`/`accountGap()` in `planner.js`, owner's

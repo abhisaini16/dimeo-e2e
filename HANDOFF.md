@@ -84,6 +84,12 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
 - **GitHub Actions** workflows are manual-only (cron removed). GitHub's scheduler was unreliable.
 
 ### Gotchas that already bit us (don't repeat)
+- **`abhiaus980@gmail.com`'s real Dimeo password is `Abhi@0010`, NOT `Abhisaini@0010`.** When this email was assigned to Fyshwick+Queenbeyan
+  on 2026-10-08, the owner pasted the wrong password (mixing it up with the other new accounts, which genuinely do use `Abhisaini@0010`).
+  Both sites' check-ins silently failed for hours (`LOGIN FAILED ... /login/password/` — the portal rejects the password and bounces back
+  to the same page, no exception thrown) until caught via a login retest and fixed. If a login-group fails consistently right after being
+  set up, retest with a plain `gcloud run jobs execute ... --args="now-<site>-<action>" --wait` for a second site on the same login before
+  assuming it's a one-off glitch — a `LOGIN FAILED` on two different sites under one login means the password itself is wrong, not the site.
 - **Never pass JSON as an argument through PowerShell to gcloud** (it strips the double quotes -> HTTP 400). Use `--message-body-from-file`
   (done in `commands/cloud/deploy-scheduler.js`). This silently broke the planner for a night.
 - Cloud Tasks task names can't be reused for ~1h after deletion: names include the HHMM (`site-action-date-HHMM`).

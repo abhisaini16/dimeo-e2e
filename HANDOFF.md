@@ -22,9 +22,16 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen, weston, greenway, city-post (Canberra GPO). No Sunday shifts.
   Public holidays are NOT special-cased: the script runs and the portal answers "No active shift today".
 - **Clash rules in the planner:** same login never within 10 min of itself (incl. batch/Bega slots); any two actions >= 3 min apart.
-  Shared-login groups as of 2026-10-08: Mitchell/Fyshwick/Greenway/Phillip share `sainishikha005@gmail.com`; Kingston/Macquarie/Dickson
-  share `Aashuahlawat2@gmail.com` (Dickson moved out of the Shikha group into this one). Planner clash-resolution spaces each group
-  automatically on *future* days — verified with `--dry` and a real `dimeo-planner` trigger.
+  **Two accounts get a wider 20-min gap** (`ACCOUNT_GAP_OVERRIDE` in `planner.js`, owner's request 2026-10-08): `sainishikha005@gmail.com`
+  (Mitchell/Fyshwick/Greenway/Phillip) and `aashuahlawat2@gmail.com` (Kingston/Macquarie/Dickson). Everyone else keeps the default 10 min.
+  `resolve()` enforces the gap between every pair of same-account actions regardless of action type, which is a superset of "N min after
+  a checkout before the next site's check-in." Planner clash-resolution spaces each group automatically on *future* days — verified with
+  `--dry` and a real `dimeo-planner` trigger.
+  **Gotcha: re-triggering the planner after deleting a task can cascade into duplicates.** `resolve()` recomputes the WHOLE day from
+  each site's independent hash every time, so pushing one event later (e.g. widening a gap) can shift a different site's placement too
+  (even one not directly touched) — and since the OLD task for that site was never deleted, you end up with two tasks for the same
+  site+action at two different times. Always re-check the full task list after a re-trigger, not just the task you expected to change,
+  and delete any stale duplicates left behind. Hit this 2026-10-08 widening Kingston/Dickson/Phillip/Mitchell's gaps to 20 min.
   **Gotcha:** changing a login mid-day does NOT fix tasks for TODAY that were already queued by the morning's planner run under the
   old account grouping — those tasks' exact times are frozen at creation (`enqueue()` is a no-op on an existing task name), so if the
   new shared login's sites happen to land within 10 min of each other, it's a live clash that re-running the planner won't repair on

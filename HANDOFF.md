@@ -1,5 +1,12 @@
 # Handoff: how this whole system works (read this first)
 
+## ⚠️ DIMEO AUTOMATION IS CURRENTLY PAUSED (since 2026-10-09, owner's explicit instruction: "Stop the auto bot DIMEO... no more auto
+check in and out"). All 5 Cloud Scheduler jobs (`dimeo-planner`, `dimeo-planner-retry`, `dimeo-plan-message`, `dimeo-daily-batch`,
+`dimeo-bega-medical`) are PAUSED, and the `dimeo-actions` Cloud Tasks queue is PAUSED too (so even already-queued same-day tasks
+won't fire). Nothing was deleted — this is fully reversible. **Do not resume it without the owner asking.** To resume: `gcloud
+scheduler jobs resume <job> --location=australia-southeast1` for each of the 5, then `gcloud tasks queues resume dimeo-actions
+--location=australia-southeast1`.
+
 For: any new Claude Code session (laptop chat or the Pi-Admin session on the Raspberry Pi) picking this project up cold.
 Last updated: 2026-10-05. **Secrets are never in this repo** (public). Logins live in `tests/data/checkin-sites.json`
 (gitignored; also Secret Manager `checkin-sites` on Google Cloud) and, for the Command51 bot, `~/command51-scan/accounts.json` on the Pi.

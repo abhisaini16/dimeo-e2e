@@ -58,7 +58,9 @@ async function runGroup(group, { headless = true, mode = 'both', interSiteDelayM
       page.getByRole('button', { name: /log in/i }).first().click(),
     ]);
 
-    if (!/\/mobile\/?$/.test(page.url())) {
+    // Dimeo's post-login landing page changed from /mobile/ to /mobile/shifts/ at some
+    // point - accept /mobile itself or any sub-path under it, not just the exact root.
+    if (!/\/mobile(\/|$)/.test(page.url())) {
       log('LOGIN FAILED — aborting group. Current URL:', page.url());
       results.push({ site: '(login)', status: 'login-failed' });
       return results;

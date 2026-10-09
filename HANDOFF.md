@@ -91,6 +91,14 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
 - **GitHub Actions** workflows are manual-only (cron removed). GitHub's scheduler was unreliable.
 
 ### Gotchas that already bit us (don't repeat)
+- **Dimeo's post-login redirect changed from `/mobile/` to `/mobile/shifts/`** (found 2026-10-10, laptop session,
+  via `qbe.command` reporting `LOGIN FAILED` despite Playwright actually landing on a real authenticated "My Cleans"
+  page with real shift data — confirmed via a manual debug script before touching the real check, not detection/a
+  block, just a URL change). `checkin-runner.js`'s login-success check only matched the exact old path
+  (`/\/mobile\/?$/`), so every successful login was being misreported as a failure - this is the ONE shared check
+  every site/command file/Cloud Run job goes through, so it broke everything equally. Fixed to `/\/mobile(\/|$)/`
+  (accepts `/mobile` itself or any sub-path under it). Verified against both URL shapes plus the real `/login/`
+  failure case, then re-ran `qbe.command` live and confirmed a real check-in succeeded end to end.
 - **`abhiaus980@gmail.com`'s real Dimeo password is `Abhi@0010`, NOT `Abhisaini@0010`.** When this email was assigned to Fyshwick+Queenbeyan
   on 2026-10-08, the owner pasted the wrong password (mixing it up with the other new accounts, which genuinely do use `Abhisaini@0010`).
   Both sites' check-ins silently failed for hours (`LOGIN FAILED ... /login/password/` — the portal rejects the password and bounces back

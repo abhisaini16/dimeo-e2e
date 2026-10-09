@@ -1,11 +1,17 @@
 # Handoff: how this whole system works (read this first)
 
-## ⚠️ DIMEO AUTOMATION IS CURRENTLY PAUSED (since 2026-10-09, owner's explicit instruction: "Stop the auto bot DIMEO... no more auto
-check in and out"). All 5 Cloud Scheduler jobs (`dimeo-planner`, `dimeo-planner-retry`, `dimeo-plan-message`, `dimeo-daily-batch`,
-`dimeo-bega-medical`) are PAUSED, and the `dimeo-actions` Cloud Tasks queue is PAUSED too (so even already-queued same-day tasks
-won't fire). Nothing was deleted — this is fully reversible. **Do not resume it without the owner asking.** To resume: `gcloud
-scheduler jobs resume <job> --location=australia-southeast1` for each of the 5, then `gcloud tasks queues resume dimeo-actions
---location=australia-southeast1`.
+## ✅ DIMEO AUTOMATION RESUMED 2026-10-10 (owner's explicit instruction, after being paused since 2026-10-09)
+All 5 Cloud Scheduler jobs + the `dimeo-actions` queue are running again. Image was rebuilt/redeployed first to pick up the
+`49af76a` login-success-check fix. **Gotcha found during this resume, read before ever pausing/resuming this queue again:**
+resuming a paused Cloud Tasks queue does NOT just re-enable it for new tasks — it immediately fires every task still sitting
+in it from before the pause, including ones dated for a day that's now in the past. ~19 stale same-day tasks all fired in
+one ~60s burst. Most were harmless no-ops (yesterday's shift already `Finished`), but running ~19 Playwright browsers at once
+in the single `dimeo-checkin` container caused real timeouts (`locator.click: Timeout 30000ms exceeded` on the login button)
+for several sites that never even reached a login attempt — Weston, Fyshwick, Dickson and Belconnen's checkout all failed this
+way. None of them had actually touched the portal (failed before login), so they were safe to just retry individually, one at
+a time, straight after — all came back clean (`done`/`checked-in`/correctly `no-shift-today`). **Lesson: before resuming a
+paused queue, list its contents first (`gcloud tasks list --queue=dimeo-actions --location=australia-southeast1`) and purge
+anything stale, rather than resuming into whatever backlog built up.**
 
 For: any new Claude Code session (laptop chat or the Pi-Admin session on the Raspberry Pi) picking this project up cold.
 Last updated: 2026-10-05. **Secrets are never in this repo** (public). Logins live in `tests/data/checkin-sites.json`
@@ -22,6 +28,12 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   - `dimeo-planner` 00:05 daily and `dimeo-planner-retry` 03:00: `commands/cloud/planner.js` computes today's random times and creates one
     Cloud Task per check-in/check-out in queue `dimeo-actions`; each task starts the job `now-<site>-<action>` 45s early. Silent unless it fails.
   - `dimeo-plan-message` **7:00am daily**: sends the day's plan to Telegram (12-hour clock, includes the 6pm batch and Bega-Medical).
+    Format (owner asked 2026-10-10): grouped by shared-login nickname, one `site: Xpm in -> Ypm out` line per site, sites
+    within a group in chronological order — Shikha (Mitchell/Greenway/Phillip), Aashu (Macquarie/Kingston/Dickson), Aus
+    (Griffith/Mawson/Weston), Abhi (Queenbeyan/Fyshwick), Tzangpo (Belconnen, solo), then a separate Canberra GPO section
+    (Kinley/Rajat, independent accounts), then "Other sites" for everything else solo, then the daily batch/Bega-Medical
+    fixed-time jobs, then a trailing line naming any site with no shift that day. See the grouping logic in `planner.js`'s
+    `NOTIFY_ONLY` branch (`GROUP_LABELS`/`GROUP_ORDER`/`CANBERRA_GPO`).
   - `dimeo-daily-batch` 6:00pm Mon-Fri (`scripts/run-checkin-final.js`): sites in order with a 5-min gap; PSD sites Mon/Wed/Fri only;
     Kingston-Gallagher, QBE, Suncorp-Phillip are check-in only; PSD-Manuka is held until 6:45pm (shares a login with Griffith).
   - `dimeo-bega-medical` 10:00pm Mon-Fri, check-in only.

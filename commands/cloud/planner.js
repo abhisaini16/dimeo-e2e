@@ -209,14 +209,13 @@ async function enqueue(token, name, whenMs, jobName) {
   const blocks = reservedBlocks(base, acct);
   const final = resolve(events, blocks).sort((a, b) => a.time - b.time);
   const names = siteNames();
-  const items = []; // 7am message rows: { t, text }
   for (const e of final) {
     const slip = Math.round((e.time - e.orig) / MIN);
     const label = `${fmt(e.time)} ${e.site} ${e.action}${slip >= 1 ? ` (+${slip}m clash-spacing)` : ''}`;
     const when = e.time - LEAD_MS;
     if (when <= now && !(DRY && dateArg)) { lines.push(`⏭ ${label} (already past, skipped)`); continue; }
     if (DRY) { lines.push(`(dry) ${label}`); continue; }
-    if (NOTIFY_ONLY) { items.push({ t: e.time, text: `${fmt(e.time)}  ${names[e.site] || e.site} ${e.action === 'checkin' ? 'check-in' : 'check-out'}` }); continue; }
+    if (NOTIFY_ONLY) continue;
     try {
       const res = await enqueue(token, `${e.site}-${e.action}-${e.dateKey.replace(/\W/g, '-')}-${hhmm(e.time)}`, when, `now-${e.site}-${e.action}`);
       lines.push(`${res === 'exists' ? '☑️' : '🗓'} ${label}`);
@@ -227,15 +226,67 @@ async function enqueue(token, name, whenMs, jobName) {
   if (NOTIFY_ONLY) {
     // the fixed-time jobs: 6pm batch (sites in order) and the 10pm Bega-Medical check-in
     const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip']);
+    const batchLines = [];
     for (const b of blocks) {
       const id = b.label.replace('batch:', '');
-      if (b.label === 'bega-medical') items.push({ t: b.lo + MIN, text: `${fmt(b.lo + MIN)}  ${names['bega-medical']} check-in` });
-      else items.push({ t: b.lo + MIN, text: `about ${fmt(b.lo + MIN)}  ${names[id] || id} ${CHECKIN_ONLY.has(id) ? 'check-in' : 'check-in + check-out'} (daily batch)` });
+      if (b.label === 'bega-medical') batchLines.push(`• ${fmt(b.lo + MIN)}  ${names['bega-medical']} check-in`);
+      else batchLines.push(`• about ${fmt(b.lo + MIN)}  ${names[id] || id} ${CHECKIN_ONLY.has(id) ? 'check-in' : 'check-in + check-out'} (daily batch)`);
     }
-    items.sort((a, b) => a.t - b.t);
+
+    // Grouped-by-shared-login format (owner asked 2026-10-10): one "in -> out" line per
+    // site, sites grouped under their shared-login nickname so it's obvious at a glance
+    // which sites run strictly sequentially on the same account. Canberra-GPO's two
+    // independent accounts get their own section. Everything else (solo accounts) is
+    // listed under "Other sites".
+    const GROUP_LABELS = {
+      'sainishikha005@gmail.com': 'Shikha',
+      'aashuahlawat2@gmail.com': 'Aashu',
+      'aus362@gmail.com': 'Aus',
+      'abhiaus980@gmail.com': 'Abhi',
+      'tzangpo363@gmail.com': 'Tzangpo',
+    };
+    const GROUP_ORDER = ['Shikha', 'Aashu', 'Aus', 'Abhi', 'Tzangpo'];
+    const CANBERRA_GPO = { 'city-post': 'Kinley', 'city-post-rajat': 'Rajat' };
+
+    const bySite = {};
+    for (const e of final) { (bySite[e.site] ||= {})[e.action] = e.time; }
+    const siteLine = (site) => {
+      const p = bySite[site];
+      if (!p || !p.checkin || !p.checkout) return null;
+      return `• ${names[site] || site}: ${fmt(p.checkin)} in → ${fmt(p.checkout)} out`;
+    };
+
+    const byGroup = new Map(GROUP_ORDER.map((g) => [g, []]));
+    const soloSites = [];
+    for (const site of SITES) {
+      if (CANBERRA_GPO[site] || !bySite[site] || !bySite[site].checkin) continue;
+      const groupLabel = GROUP_LABELS[acct[site]];
+      if (groupLabel) byGroup.get(groupLabel).push(site);
+      else soloSites.push(site);
+    }
+
+    const sections = [];
+    for (const g of GROUP_ORDER) {
+      const sites = byGroup.get(g);
+      if (!sites.length) continue;
+      sites.sort((a, b) => bySite[a].checkin - bySite[b].checkin);
+      sections.push(`${g}${g === 'Tzangpo' ? ' (Belconnen, solo)' : ''}:`, ...sites.map(siteLine), '');
+    }
+    const gpoLines = Object.entries(CANBERRA_GPO)
+      .filter(([site]) => bySite[site] && bySite[site].checkin)
+      .sort(([a], [b]) => bySite[a].checkin - bySite[b].checkin)
+      .map(([site, who]) => `• ${who}: ${fmt(bySite[site].checkin)} in → ${fmt(bySite[site].checkout)} out`);
+    if (gpoLines.length) sections.push('Canberra GPO:', ...gpoLines, '');
+    soloSites.sort((a, b) => bySite[a].checkin - bySite[b].checkin);
+    if (soloSites.length) sections.push('Other sites:', ...soloSites.map(siteLine), '');
+    if (batchLines.length) sections.push('Daily batch / fixed-time:', ...batchLines, '');
+
+    const noShiftSites = lines.filter((l) => l.startsWith('➖')).map((l) => l.match(/➖ (\S+):/)[1]);
     lines.length = 0;
-    if (items.length) {
-      lines.push('Check-ins today (Sydney time):', ...items.map((i) => i.text), '', 'If a site has no shift today (for example a public holiday) its run will report "No active shift today".');
+    if (sections.length) {
+      while (sections[sections.length - 1] === '') sections.pop();
+      lines.push(...sections);
+      if (noShiftSites.length) lines.push('', `${noShiftSites.map((s) => names[s] || s).join(', ')}: no shift today.`);
     } else {
       lines.push('No check-ins are scheduled today.');
     }

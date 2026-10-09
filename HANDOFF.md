@@ -156,6 +156,16 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   `~/dimeo-e2e/tests/data/checkin-sites.json` on the Pi is the pulled credentials file (gitignored, chmod 600; refresh from Secret Manager `checkin-sites`).
   gcloud is slow on the Pi (several seconds per call): run long sequences in the background writing to a file, since SSH can drop mid-command.
 - **Pi notifications** use a separate bot `@piadmin_cbr_bot` (online-after-boot message, Pi-Admin link, problem/resolved alerts every 5 min via `pi-health.timer`).
+- **2026-10-10: the Pi overheated and the owner had to shut it down manually — no alert fired first.** `pi-health.sh` only alerted at
+  a hard 80°C, with no earlier warning tier, and (worse) had NO record that survives a reboot: `~/.pi-health.state` just gets
+  overwritten each run, and journald here defaults to volatile storage (wiped on every boot) — so by the time the Pi was back up,
+  there was zero forensic evidence of what actually happened leading up to the shutdown. Fixed both gaps: added a 70°C "getting
+  warm" early-warning tier (alongside the existing 80°C hard alert) in `pi-health.sh`, added an always-append log
+  `~/.pi-temp.log` (timestamp + temp + throttle flags, every 5 min, capped at 20k lines) that survives a reboot, and switched
+  journald to `Storage=persistent` in `/etc/systemd/journald.conf` so `journalctl -b -1` works after a reboot too. **If this
+  happens again, check `~/.pi-temp.log` and `journalctl -b -1` first** instead of concluding there's no evidence.
+  Note: the no-battery-clock quirk (see above) also means journald's OWN timestamps for a boot are wrong until NTP catches up —
+  `dmesg -T` (not `journalctl -k -b`) gives the corrected/true time for early boot messages.
 - The Dimeo repo is also cloned at `~/dimeo-e2e` (`git pull` to get the latest of this file).
 - **GitHub access from the Pi:** deploy key `~/.ssh/github_dimeo` (read-write, this repo only; GitHub shows it as "Pi-Admin (cbr-pi)"), remote is SSH.
   Pi-Admin and the laptop session share this repo as their memory (rules in `CLAUDE.md`). The laptop has `gh` logged in as the repo owner (revoke at github.com/settings/applications).

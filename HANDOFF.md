@@ -132,12 +132,21 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   actual check-in/check-out result, not the card label.
 - Verify a change by triggering the real path: `gcloud scheduler jobs run dimeo-planner --location=australia-southeast1`, then list the tasks.
 
-## 2. Command51 QR scans: Raspberry Pi (code lives ONLY on the Pi, not in git)
-`~/command51-scan/` on the Pi: Telegram bot `@Command51_checkin_CBR_bot` (anyone with the link can use it; tap a site button -> scan recorded, popup on the Pi screen,
-audit log `~/pi-popup/activity.log`). 13 sites (jobs in `jobs.json`, per-site logins in `accounts.json`, chmod 600). Daily planner
-(`planner.js`, `schedule.json`): El Jannah daily 11:01-11:58pm, Next Generation daily 9:00-9:15pm, Lilly Pilly + Lilly Pilly Monash Mon-Fri 6:15-7:00pm,
-Rashays Fri/Sat/Sun 9:00pm-11:58pm, Linen Services Wednesday 5-7pm. Plan sent to Telegram at 7am. The planner checks the real clock every 20s
-(the Pi has no battery clock; after a reboot it waits for NTP). Service: `systemctl --user status command51-bot`.
+## 2. Command51 QR scans: Google Cloud Run (moved off the Pi 2026-10-10)
+**No longer runs on the Pi at all** — migrated to its own repo, `abhisaini16/command51-cloud` (private; site names/job
+structure are business-sensitive, unlike this public repo). Same project (`cbr-automation-510513`) and same
+Job+Scheduler+Tasks+webhook pattern as Dimeo above. Telegram bot `@Command51_checkin_CBR_bot` (anyone with the link can
+use it; tap a site button -> scan recorded) now runs as a **webhook** Cloud Run Service (`command51-bot`), not the Pi's
+old long-polling `bot.js` — the Pi had no public address so polling was the only option there; Cloud Run has one, so
+webhook is strictly better (no always-on container). The on-screen popup confirmation (`pi-popup/popup.js`) does NOT
+carry over — no display in the cloud — scans still get logged and reported to Telegram, just without the local window.
+13 sites, 6 auto-scheduled (El Jannah daily 11:01-11:58pm, Next Generation daily 9:00-9:15pm, Lilly Pilly + Monash
+Mon-Fri 6:15-7:00pm, Rashays Fri/Sat/Sun 9:00pm-11:58pm, Linen Services Wednesday 5-7pm), rest manual tap-only. Full
+architecture, gotchas (Playwright/image version pinning, the `run.invoker` vs `run.developer` vs
+`iam.serviceAccountUser` IAM traps, the webhook shared-secret, the Pi's broken IPv6 route to Telegram) are in that
+repo's own `README.md` — read it there, don't re-derive from memory. The Pi's old `~/command51-scan/` code is left in
+place for reference only; its systemd service (`command51-bot`) is stopped+disabled and must NOT be restarted (Telegram
+delivers to only one of polling/webhook at a time, so it would silently receive nothing anyway).
 
 ## 3. The Raspberry Pi 5 itself
 Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwordless sudo is ON (owner's choice).

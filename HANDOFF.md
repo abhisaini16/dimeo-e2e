@@ -131,6 +131,16 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   was rebuilt. Also: a site's shift-list status label (e.g. "Checked in") is not reliable live state — trust the script's
   actual check-in/check-out result, not the card label.
 - Verify a change by triggering the real path: `gcloud scheduler jobs run dimeo-planner --location=australia-southeast1`, then list the tasks.
+- **There's a separate on-demand tap-to-check-in Telegram bot** (`commands/cloud/telegram-bot/`, Cloud Function
+  `dimeo-telegram-bot`, its own webhook/secret, service account `dimeo-bot`) — distinct from the scheduled automation
+  above. Shows every site as a numbered/tappable list from its own `sites.json` (id+label only; real login still comes
+  from `checkin-sites.json` via `manual-<site-id>` jobs) and triggers an immediate check-in+out through the same
+  `dimeo-checkin` Job. **This list does NOT update itself when sites are added/moved/split in `checkin-sites.json`** —
+  found stale 2026-10-10 (missing Dickson and Rajat's `city-post-rajat`, added earlier that same day). After any site
+  addition/rename, also update `commands/cloud/telegram-bot/sites.json` and redeploy:
+  `gcloud functions deploy dimeo-telegram-bot --gen2 --region=australia-southeast1 --runtime=nodejs22 --source=commands/cloud/telegram-bot --entry-point=telegramBot --trigger-http --allow-unauthenticated --service-account=dimeo-bot@cbr-automation-510513.iam.gserviceaccount.com --set-env-vars=GCP_PROJECT=cbr-automation-510513,GCP_REGION=australia-southeast1 --set-secrets=TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,WEBHOOK_SECRET=telegram-webhook-secret:latest --memory=256Mi --max-instances=2`
+  (the webhook URL is stable across redeploys, no need to re-run `setWebhook`). See `deploy.ps1` in that folder for the
+  full one-time setup (also creates the webhook secret + service account if missing).
 
 ## 2. Command51 QR scans: Google Cloud Run (moved off the Pi 2026-10-10)
 **No longer runs on the Pi at all** — migrated to its own repo, `abhisaini16/command51-cloud` (private; site names/job

@@ -191,7 +191,16 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
 
 ## Owner preferences
 - Telegram times in the normal 12-hour clock. Pi screen = Raspberry Pi Connect, always. Command51 bot is for its own operations only; Pi things use the Pi-Admin bot.
-- Jindabyne and BMD are out of scope. Change the weak passwords is an OPEN item (they were shared in chat); A$12 hard cap is still off.
+- Jindabyne is out of scope. Change the weak passwords is an OPEN item (they were shared in chat); A$12 hard cap is still off.
+- **BMD (Whitlam Site Shed) added 2026-10-18**, no longer out of scope: owner gave the real address/coords (Coppins Crossing
+  Road, Whitlam ACT; -35.281466/149.043711, replacing the old no-street-address placeholder) and asked for a daily sign-in/out
+  attempt using the abhiaus980 login (same as Fyshwick/Queenbeyan) — NOT the old Ugyenzeppa55 login checkin-sites.json had on
+  file, which was replaced. The real shift (confirmed live) is only Tue/Wed/Fri 9am-2pm, but per the owner's own instruction this
+  runs EVERY day at a fixed 12:00pm check-in / 12:15pm check-out (two dedicated Scheduler jobs, `dimeo-bmd-checkin`/`-checkout`,
+  cron `0 12 * * *`/`15 12 * * *` — not the randomized planner, since the times are fixed, not clash-managed) — on a day with
+  no real shift it just reports "no-shift-today" (the owner explicitly wants this, not an error). Verified end-to-end live
+  (both legs correctly found Tuesday's shift as nearest and reported no-shift-today, logged in fine, posted to Telegram).
+  First real occurrence: Tue 2026-10-20.
 
 ## Open items
 - Watch the first full day of real runs (first real scheduled check-in: 2026-10-05 ~5:01pm). No automatic retry exists for Dimeo check-ins yet.

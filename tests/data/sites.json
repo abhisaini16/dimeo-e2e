@@ -26,6 +26,6 @@
   { "name": "PSD-Tuggeranong", "manager": "Isa", "address": "South Point, shop 75/210 Anketell St, Greenway ACT 2900", "lat": -35.41624342, "lon": 149.0668368 },
   { "name": "PSD-Woden", "manager": "Isa", "address": "Westfield Woden, Level/2 Keltie St, Phillip ACT 2606", "lat": -35.34529635, "lon": 149.0860939 },
   { "name": "Cooma-PO", "address": "Shop 7/116-128 Sharp St, Cooma NSW 2630", "lat": -36.23514168150691, "lon": 149.1260217618011 },
-  { "name": "BMD", "address": null, "lat": -35.281876469445166, "lon": 149.04345546743883, "note": "Whitlam Site Shed; no street address given" },
+  { "name": "BMD", "address": "Coppins Crossing Road, Whitlam, Australian Capital Territory", "lat": -35.281466, "lon": 149.043711, "note": "Whitlam Site Shed" },
   { "name": "Bega-Medical", "address": "1/106 Auckland St, Bega NSW 2550", "lat": -36.67457563861185, "lon": 149.84088070881137 }
 ]

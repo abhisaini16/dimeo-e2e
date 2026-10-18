@@ -122,7 +122,7 @@ function reservedBlocks(base, acct) {
   const dow = base.getDay();
   if (dow < 1 || dow > 5) return [];
   const at = (h, m) => new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0).getTime();
-  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka']
+  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'westfield-woden-hcf', 'psd-manuka']
     .filter((id) => !id.startsWith('psd-') || [1, 3, 5].includes(dow));
   const blocks = [];
   order.forEach((id, i) => {

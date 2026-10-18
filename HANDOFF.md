@@ -201,6 +201,17 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   no real shift it just reports "no-shift-today" (the owner explicitly wants this, not an error). Verified end-to-end live
   (both legs correctly found Tuesday's shift as nearest and reported no-shift-today, logged in fine, posted to Telegram).
   First real occurrence: Tue 2026-10-20.
+- **Westfield Woden - HCF (Phillip Branch) added 2026-10-18, code-only — NOT live yet.** Owner's own
+  yongzindorji@gmail.com login (solo, not shared with anything else). Real shift confirmed live: Mon-Fri 6pm-6am,
+  matcher `{ all: ['HCF'] }` in `site-matchers.js` (card reads "Phillip Branch / HCF"). Added to the actual "daily
+  batch" (`scripts/run-checkin-final.js`'s `SELECTED_IDS`, right after suncorp-phillip) and to planner.js's
+  `reservedBlocks()` order so it shows correctly in the 7am Telegram plan — confirmed via a local `--dry` run
+  (shows "about 6:18 pm HCF-Phillip check-in + check-out (daily batch)" for a Tuesday). Address/coords geocoded
+  (Westfield Woden, Furzer St, Phillip ACT 2606; -35.3463146/149.0857874). **Blocker: the live Dimeo portal shows
+  every shift card stuck on "Pending Site Registration" — no working check-in link at all yet.** Owner is sorting
+  registration out on Dimeo's side; this will start actually running once that clears, with zero further code
+  changes needed. Don't be surprised by "no-checkin-control"/similar benign-looking failures in the batch log
+  until then — that's expected, not a bug.
 
 ## Open items
 - Watch the first full day of real runs (first real scheduled check-in: 2026-10-05 ~5:01pm). No automatic retry exists for Dimeo check-ins yet.

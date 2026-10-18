@@ -32,6 +32,12 @@ const SELECTED_IDS = [
   'psd-tuggeranong',
   'psd-queenbeyan',
   'suncorp-phillip',
+  // Yongzin Dorji's own solo login, not shared with anything else in this batch or
+  // elsewhere; same 6pm-6am overnight shift shape as the sites above. Site registration
+  // on Dimeo's side is still pending as of 2026-10-18 (owner will sort that out) — until
+  // then this just reports a benign no-checkin-control/no-shift status, same as any
+  // other site with nothing to do.
+  'westfield-woden-hcf',
   // Last on purpose: Griffith-PO (same login) checks out ~6:15-6:35pm, so PSD-Manuka
   // waits until the end of the batch (~6:40pm) to avoid two sessions on one account.
   'psd-manuka',

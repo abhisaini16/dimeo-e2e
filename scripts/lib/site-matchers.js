@@ -34,6 +34,7 @@ const MATCHERS = {
   'Cooma-PO':            { all: ['COOMA'] },                            // confirmed shift exists as "COOMA-VALE ST-PO"; NOTE address mismatch, see sites.json
   'BMD':                 { all: ['WHITLAM'] },                          // confirmed: "Whitlam Site Shed"
   'Yass-PO':             { all: ['YASS'] },                             // confirmed: "YASS-COMUR ST-MX"
+  'HCF-Phillip':         { all: ['HCF'] },                               // confirmed: "Phillip Branch / HCF" (site registration pending as of 2026-10-18, so not clickable yet)
 };
 
 function cardMatchesSite(cardText, siteKey) {

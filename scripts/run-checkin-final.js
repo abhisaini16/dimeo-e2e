@@ -111,7 +111,7 @@ const SELECTED_IDS = [
 
   postResultsToGitHubIssue(allResults, 'Daily Check-in Batch', nowStr);
 
-  const BENIGN = ['done', 'already-done', 'no-active-shift', 'no-shift-today', 'checked-in-awaiting-checkout'];
+  const BENIGN = ['done', 'already-done', 'no-active-shift', 'no-shift-today', 'checked-in-awaiting-checkout', 'checked-in', 'already-checked-in'];
   const failed = allResults.some((r) => !BENIGN.includes(r.status));
   process.exit(failed ? 1 : 0);
 })().catch((err) => {

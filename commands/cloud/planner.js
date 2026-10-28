@@ -240,12 +240,12 @@ async function enqueue(token, name, whenMs, jobName) {
     // listed under "Other sites".
     const GROUP_LABELS = {
       'sainishikha005@gmail.com': 'Shikha',
-      'aashuahlawat2@gmail.com': 'Aashu',
-      'aus362@gmail.com': 'Aus',
+      'aashuahlawat2@gmail.com': 'Abrar Khan',
+      'aus362@gmail.com': 'RajKumar',
       'abhiaus980@gmail.com': 'Abhi',
       'tzangpo363@gmail.com': 'Tzangpo',
     };
-    const GROUP_ORDER = ['Shikha', 'Aashu', 'Aus', 'Abhi', 'Tzangpo'];
+    const GROUP_ORDER = ['Shikha', 'Abrar Khan', 'RajKumar', 'Abhi', 'Tzangpo'];
     const CANBERRA_GPO = { 'city-post': 'Kinley', 'city-post-rajat': 'Rajat' };
 
     const bySite = {};

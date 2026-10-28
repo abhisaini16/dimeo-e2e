@@ -212,6 +212,19 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   registration out on Dimeo's side; this will start actually running once that clears, with zero further code
   changes needed. Don't be surprised by "no-checkin-control"/similar benign-looking failures in the batch log
   until then — that's expected, not a bug.
+  **UPDATE 2026-10-28: this is actually failing at LOGIN, not just blocked by registration** — real log signature
+  `LOGIN FAILED ... /login/password/` every weekday since it was added (Oct 19 onward), the exact same bounce-back
+  signature as the known abhiaus980 wrong-password incident (see gotchas below). The password on file
+  (`Abhisaini@0010`, a generic one reused across several other accounts) is very likely wrong for yongzindorji's
+  real account — needs the owner to confirm/provide the real password before this can go further; registration
+  status can't even be reached right now.
+- **`run-checkin-final.js`'s daily batch has been exiting 1 (false "FAILED" Telegram alert) on EVERY run since at
+  least 2026-10-05, even on fully successful days** — found 2026-10-28 while checking something unrelated. Root
+  cause: its own `BENIGN` list didn't include `checked-in`/`already-checked-in`, the exact statuses its three
+  checkin-only sites (Kingston-Gallagher/QBE/Suncorp-Phillip) report on a normal success. Confirmed by re-reading
+  Oct 16's log: all 7 sites reported ✅ success, job still exited 1. **Fixed** (added both statuses to BENIGN),
+  rebuilt+redeployed. The daily-batch's ⚠️ Telegram alerts up to now were not a reliable signal of a real problem —
+  don't trust historical "FAILED" messages from before 2026-10-28 without rechecking the actual per-site results.
 
 ## Open items
 - Watch the first full day of real runs (first real scheduled check-in: 2026-10-05 ~5:01pm). No automatic retry exists for Dimeo check-ins yet.

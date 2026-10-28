@@ -229,8 +229,8 @@ async function enqueue(token, name, whenMs, jobName) {
     const batchLines = [];
     for (const b of blocks) {
       const id = b.label.replace('batch:', '');
-      if (b.label === 'bega-medical') batchLines.push(`• ${fmt(b.lo + MIN)}  ${names['bega-medical']} check-in`);
-      else batchLines.push(`• about ${fmt(b.lo + MIN)}  ${names[id] || id} ${CHECKIN_ONLY.has(id) ? 'check-in' : 'check-in + check-out'} (daily batch)`);
+      if (b.label === 'bega-medical') batchLines.push(`• ${fmt(b.lo + MIN)}  ${names['bega-medical']} (${acct['bega-medical']}) check-in`);
+      else batchLines.push(`• about ${fmt(b.lo + MIN)}  ${names[id] || id} (${acct[id]}) ${CHECKIN_ONLY.has(id) ? 'check-in' : 'check-in + check-out'} (daily batch)`);
     }
 
     // Grouped-by-shared-login format (owner asked 2026-10-10): one "in -> out" line per
@@ -254,11 +254,14 @@ async function enqueue(token, name, whenMs, jobName) {
 
     const bySite = {};
     for (const e of final) { (bySite[e.site] ||= {})[e.action] = e.time; }
-    const siteLine = (site) => {
+    const siteLine = (site, withEmail = false) => {
       const p = bySite[site];
       if (!p || !p.checkin || !p.checkout) return null;
-      return `• ${names[site] || site}: ${fmt(p.checkin)} in → ${fmt(p.checkout)} out`;
+      const email = withEmail ? ` (${acct[site]})` : '';
+      return `• ${names[site] || site}${email}: ${fmt(p.checkin)} in → ${fmt(p.checkout)} out`;
     };
+
+    const EMAIL_FOR_GROUP = Object.fromEntries(Object.entries(GROUP_LABELS).map(([email, label]) => [label, email]));
 
     const byGroup = new Map(GROUP_ORDER.map((g) => [g, []]));
     const soloSites = [];
@@ -274,15 +277,15 @@ async function enqueue(token, name, whenMs, jobName) {
       const sites = byGroup.get(g);
       if (!sites.length) continue;
       sites.sort((a, b) => bySite[a].checkin - bySite[b].checkin);
-      sections.push(`${g}${g === 'Tzangpo' ? ' (Belconnen, solo)' : ''}:`, ...sites.map(siteLine), '');
+      sections.push(`${g} (${EMAIL_FOR_GROUP[g]})${g === 'Tzangpo' ? ' (Belconnen, solo)' : ''}:`, ...sites.map((s) => siteLine(s)), '');
     }
     const gpoLines = Object.entries(CANBERRA_GPO)
       .filter(([site]) => bySite[site] && bySite[site].checkin)
       .sort(([a], [b]) => bySite[a].checkin - bySite[b].checkin)
-      .map(([site, who]) => `• ${who}: ${fmt(bySite[site].checkin)} in → ${fmt(bySite[site].checkout)} out`);
+      .map(([site, who]) => `• ${who} (${acct[site]}): ${fmt(bySite[site].checkin)} in → ${fmt(bySite[site].checkout)} out`);
     if (gpoLines.length) sections.push('Canberra GPO:', ...gpoLines, '');
     soloSites.sort((a, b) => bySite[a].checkin - bySite[b].checkin);
-    if (soloSites.length) sections.push('Other sites:', ...soloSites.map(siteLine), '');
+    if (soloSites.length) sections.push('Other sites:', ...soloSites.map((s) => siteLine(s, true)), '');
     if (batchLines.length) sections.push('Daily batch / fixed-time:', ...batchLines, '');
 
     const noShiftSites = lines.filter((l) => l.startsWith('➖')).map((l) => l.match(/➖ (\S+):/)[1]);

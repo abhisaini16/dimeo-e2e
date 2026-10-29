@@ -122,11 +122,14 @@ function reservedBlocks(base, acct) {
   const dow = base.getDay();
   if (dow < 1 || dow > 5) return [];
   const at = (h, m) => new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0).getTime();
-  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'westfield-woden-hcf', 'psd-manuka']
+  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka', 'westfield-woden-hcf']
     .filter((id) => !id.startsWith('psd-') || [1, 3, 5].includes(dow));
   const blocks = [];
   order.forEach((id, i) => {
-    const start = id === 'psd-manuka' ? Math.max(at(18, 0) + i * 6 * MIN, at(18, 45)) : at(18, 0) + i * 6 * MIN;
+    let start = id === 'psd-manuka' ? Math.max(at(18, 0) + i * 6 * MIN, at(18, 45)) : at(18, 0) + i * 6 * MIN;
+    // HCF shares Kinga's login with PSD-Manuka: separate session >= 10 min after it.
+    const prev = blocks[blocks.length - 1];
+    if (prev && prev.account === acct[id]) start = Math.max(start, prev.hi + 3 * MIN + SAME_ACCOUNT_GAP);
     blocks.push({ label: `batch:${id}`, account: acct[id], lo: start - MIN, hi: start + 3 * MIN });
   });
   blocks.push({ label: 'bega-medical', account: acct['bega-medical'], lo: at(22, 0) - MIN, hi: at(22, 0) + 3 * MIN });

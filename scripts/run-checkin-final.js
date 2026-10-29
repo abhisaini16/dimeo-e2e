@@ -11,6 +11,10 @@ const { runGroup } = require('./lib/checkin-runner');
 const { iconFor, postResultsToGitHubIssue } = require('./lib/notify');
 
 const INTER_SITE_DELAY_MS = 5 * 60 * 1000;
+// Gap before a new session on the same login as the previous session (planner rule).
+const SAME_ACCOUNT_GAP_MS = 10 * 60 * 1000;
+// Sites that always get their own login session (never merged with the previous site).
+const SEPARATE_SESSION = new Set(['westfield-woden-hcf']);
 
 // These sites only ever need a check-in (the portal finishes the shift itself).
 const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip']);
@@ -32,15 +36,13 @@ const SELECTED_IDS = [
   'psd-tuggeranong',
   'psd-queenbeyan',
   'suncorp-phillip',
-  // Yongzin Dorji's own solo login, not shared with anything else in this batch or
-  // elsewhere; same 6pm-6am overnight shift shape as the sites above. Site registration
-  // on Dimeo's side is still pending as of 2026-10-18 (owner will sort that out) — until
-  // then this just reports a benign no-checkin-control/no-shift status, same as any
-  // other site with nothing to do.
-  'westfield-woden-hcf',
-  // Last on purpose: Griffith-PO (same login) checks out ~6:15-6:35pm, so PSD-Manuka
-  // waits until the end of the batch (~6:40pm) to avoid two sessions on one account.
+  // Last on purpose: Griffith-PO checks out ~6:15-6:35pm, so PSD-Manuka waits until the
+  // end of the batch (~6:40pm).
   'psd-manuka',
+  // Kinga Wangchuk's login (moved off yongzindorji@ 2026-10-30 — not a DIMEO cleaner).
+  // Same login as PSD-Manuka, so it runs after it as its own separate session with a
+  // >= 10 min gap (SAME_ACCOUNT_GAP_MS) — never two logins on her account at once.
+  'westfield-woden-hcf',
 ];
 
 (async () => {
@@ -59,7 +61,7 @@ const SELECTED_IDS = [
   for (const e of entries) {
     const last = groups[groups.length - 1];
     const checkinOnly = CHECKIN_ONLY.has(e.id);
-    if (last && last.email === e.email && last.password === e.password && last.checkinOnly === checkinOnly) {
+    if (last && !SEPARATE_SESSION.has(e.id) && last.email === e.email && last.password === e.password && last.checkinOnly === checkinOnly) {
       last.sites.push(e.site);
       last.labels.push(e.label);
     } else {
@@ -70,8 +72,10 @@ const SELECTED_IDS = [
   const allResults = [];
   for (let g = 0; g < groups.length; g++) {
     if (g > 0) {
-      console.log(`\n>>> Waiting 5 min before next site...`);
-      await new Promise((r) => setTimeout(r, INTER_SITE_DELAY_MS));
+      const sameLogin = groups[g - 1].email.toLowerCase() === groups[g].email.toLowerCase();
+      const wait = sameLogin ? SAME_ACCOUNT_GAP_MS : INTER_SITE_DELAY_MS;
+      console.log(`\n>>> Waiting ${wait / 60000} min before next site${sameLogin ? ' (same login)' : ''}...`);
+      await new Promise((r) => setTimeout(r, wait));
     }
     const acct = groups[g];
     console.log(`\n>>> Logging in for: ${acct.labels.join(', ')}`);

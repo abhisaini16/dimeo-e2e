@@ -226,6 +226,15 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   rebuilt+redeployed. The daily-batch's ⚠️ Telegram alerts up to now were not a reliable signal of a real problem —
   don't trust historical "FAILED" messages from before 2026-10-28 without rechecking the actual per-site results.
 
+- **2026-10-30: Westfield Woden - HCF moved off yongzindorji@ (not a DIMEO cleaner; login failed every night) onto
+  Kinga Wangchuk's login `wangchukkinga005@gmail.com`** (Secret Manager `checkin-sites` v10; password copied from her
+  psd-manuka entry). Kinga is registered at Phillip Branch. Since PSD-Manuka uses the same login, HCF now runs LAST
+  in the daily batch as its own separate session, starting 10 min after PSD-Manuka's session ends
+  (`SEPARATE_SESSION`/`SAME_ACCOUNT_GAP_MS` in `run-checkin-final.js`); planner `reservedBlocks()` order updated to match.
+  On Mon/Tue/Thu (no PSD) HCF just follows Suncorp-Phillip after the usual 5 min. Note: PSD-Manuka's login is
+  Kinga's, not Griffith's (aus362@) — the older "shares a login with Griffith" notes are stale; and
+  `NOT_BEFORE_MIN` is set but never enforced by `runGroup()`.
+
 ## Open items
 - Watch the first full day of real runs (first real scheduled check-in: 2026-10-05 ~5:01pm). No automatic retry exists for Dimeo check-ins yet.
 - Back up the Pi-only code (`~/command51-scan`, `~/pi-popup`) to a private repo; nothing of it is in git.

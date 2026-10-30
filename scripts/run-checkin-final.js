@@ -9,6 +9,8 @@ const fs = require('fs');
 const sitesList = require('../tests/data/checkin-sites.json');
 const { runGroup } = require('./lib/checkin-runner');
 const { iconFor, postResultsToGitHubIssue } = require('./lib/notify');
+const { planBatch, gapMs, dateKeyOf } = require('./lib/batch-plan');
+const { sydneyNow } = require('./lib/mawson-schedule');
 
 const INTER_SITE_DELAY_MS = 5 * 60 * 1000;
 // Gap before a new session on the same login as the previous session (planner rule).
@@ -61,38 +63,30 @@ const SELECTED_IDS = [
     return e;
   });
 
-  // Group consecutive same-account sites so each login is reused within that run,
-  // while still preserving the exact sequence order above.
-  const groups = [];
-  for (const e of entries) {
-    const last = groups[groups.length - 1];
-    const checkinOnly = CHECKIN_ONLY.has(e.id);
-    if (last && !SEPARATE_SESSION.has(e.id) && last.email === e.email && last.password === e.password && last.checkinOnly === checkinOnly) {
-      last.sites.push(e.site);
-      last.labels.push(e.label);
-    } else {
-      groups.push({ email: e.email, password: e.password, sites: [e.site], labels: [e.label], checkinOnly, notBefore: NOT_BEFORE_MIN[e.id] });
-    }
-  }
-
+  // Every site is its own login session, run at the time planned by batch-plan.js, which
+  // keeps the same login >= 27-34 min apart between different sites (Abhi, 2026-10-30).
+  const acctMap = Object.fromEntries(sitesList.map((s) => [s.id, s.email.toLowerCase()]));
+  const base = sydneyNow();
+  const dk = dateKeyOf(base);
+  const plan = planBatch(base, acctMap).filter((p) => todaysIds.includes(p.id));
+  console.log('Batch plan: ' + plan.map((p) => `${new Date(p.time).toTimeString().slice(0, 5)} ${p.id}`).join(', '));
+  const lastActual = {};
   const allResults = [];
-  for (let g = 0; g < groups.length; g++) {
-    if (g > 0) {
-      const sameLogin = groups[g - 1].email.toLowerCase() === groups[g].email.toLowerCase();
-      const wait = sameLogin ? SAME_ACCOUNT_GAP_MS : INTER_SITE_DELAY_MS;
-      console.log(`\n>>> Waiting ${wait / 60000} min before next site${sameLogin ? ' (same login)' : ''}...`);
+  for (const p of plan) {
+    const e = entries.find((x) => x.id === p.id);
+    const acctKey = e.email.toLowerCase();
+    let target = p.time;
+    if (lastActual[acctKey] != null) target = Math.max(target, lastActual[acctKey] + gapMs(dk, acctKey, p.id));
+    const wait = target - sydneyNow().getTime();
+    if (wait > 0 && process.env.RUN_ALL_DAYS !== 'true') {
+      console.log(`\n>>> Waiting ${Math.round(wait / 60000)} min until ${new Date(target).toTimeString().slice(0, 5)} for ${e.label}...`);
       await new Promise((r) => setTimeout(r, wait));
     }
-    const acct = groups[g];
-    console.log(`\n>>> Logging in for: ${acct.labels.join(', ')}`);
-    const group = {
-      id: acct.labels.join('+').replace(/\s+/g, '-'),
-      label: acct.labels.join(' & '),
-      email: acct.email,
-      password: acct.password,
-      sites: acct.sites,
-    };
-    const results = await runGroup(group, { interSiteDelayMs: INTER_SITE_DELAY_MS, mode: acct.checkinOnly ? 'checkin' : 'both' });
+    console.log(`\n>>> Logging in for: ${e.label}`);
+    const checkinOnly = CHECKIN_ONLY.has(e.id);
+    const group = { id: e.label.replace(/\s+/g, '-'), label: e.label, email: e.email, password: e.password, sites: [e.site] };
+    const results = await runGroup(group, { interSiteDelayMs: INTER_SITE_DELAY_MS, mode: checkinOnly ? 'checkin' : 'both' });
+    lastActual[acctKey] = sydneyNow().getTime();
     allResults.push(...results);
   }
 

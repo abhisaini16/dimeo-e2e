@@ -32,25 +32,10 @@ const GLOBAL_GAP = 3 * MIN;
 // re-running the planner the same day always lands on the same gap). `resolve()` enforces
 // this between EVERY pair of same-account actions (not just checkout->checkin), which is
 // a superset guarantee and simpler to reason about.
-const RANDOM_GAP_ACCOUNTS = new Set([
-  'sainishikha005@gmail.com',
-  'aashuahlawat2@gmail.com',
-  'aus362@gmail.com',
-  'abhiaus980@gmail.com',
-  'tzangpo363@gmail.com',
-]);
-const RANDOM_GAP_MIN = 25 * MIN;
-const RANDOM_GAP_SPAN = 12 * 60; // 0..12 min, in seconds
-function simpleHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-  return h;
-}
-function accountGap(e) {
-  if (!RANDOM_GAP_ACCOUNTS.has(e.account)) return SAME_ACCOUNT_GAP;
-  const offsetSec = simpleHash(`${e.dateKey}-gap-${e.account}-${e.site}-${e.action}`) % (RANDOM_GAP_SPAN + 1);
-  return RANDOM_GAP_MIN + offsetSec * 1000;
-}
+// 2026-10-30 (Abhi): EVERY login now gets a 27-34 min gap between different sites,
+// whole sessions included (shared helper in scripts/lib/batch-plan.js).
+const { planBatch, gapMs } = require('../scripts/lib/batch-plan');
+function accountGap(e) { return gapMs(e.dateKey, e.account, e.site, e.action); }
 
 // For a RANDOM_GAP_ACCOUNTS login, a plain pairwise gap between nearest events isn't
 // enough: two sites' checkin->checkout sessions can still overlap in time even when
@@ -63,33 +48,33 @@ function accountGap(e) {
 // resolve() pass below runs — each site keeps its own checkin->checkout duration, only
 // shifted forward as a whole when it would otherwise start before the previous site's
 // checkout+gap.
-function sequenceAccountBlocks(rawTargets, sites, acct) {
+function sequenceAccountBlocks(rawTargets, sites, acct, blocks) {
   const byAccount = new Map();
   for (const site of sites) {
     const t = rawTargets[site];
     if (!t) continue;
     const account = acct[site];
-    if (!RANDOM_GAP_ACCOUNTS.has(account)) continue;
     if (!byAccount.has(account)) byAccount.set(account, []);
     byAccount.get(account).push(site);
   }
   for (const [account, group] of byAccount) {
+    const fixed = blocks.filter((b) => b.account === account);
     group.sort((a, b) => rawTargets[a].checkinTarget - rawTargets[b].checkinTarget);
     let prevCheckout = null;
     for (const site of group) {
       const t = rawTargets[site];
+      const gap = accountGap({ account, site, action: 'checkin', dateKey: t.dateKey });
       const origCheckin = t.checkinTarget.getTime();
-      let newCheckin = origCheckin;
-      if (prevCheckout !== null) {
-        const gap = accountGap({ account, site, action: 'checkin', dateKey: t.dateKey });
-        newCheckin = Math.max(origCheckin, prevCheckout + gap);
+      const dur = t.checkoutTarget.getTime() - origCheckin;
+      let start = prevCheckout !== null ? Math.max(origCheckin, prevCheckout + gap) : origCheckin;
+      for (let guard = 0; guard < 50; guard++) {
+        const hit = fixed.find((f) => start - gap < f.hi && start + dur + gap > f.lo);
+        if (!hit) break;
+        start = hit.hi + gap;
       }
-      const shift = newCheckin - origCheckin;
-      if (shift > 0) {
-        t.checkinTarget = new Date(origCheckin + shift);
-        t.checkoutTarget = new Date(t.checkoutTarget.getTime() + shift);
-      }
-      prevCheckout = t.checkoutTarget.getTime();
+      t.checkinTarget = new Date(start);
+      t.checkoutTarget = new Date(start + dur);
+      prevCheckout = start + dur;
     }
   }
 }
@@ -122,17 +107,7 @@ function reservedBlocks(base, acct) {
   const dow = base.getDay();
   if (dow < 1 || dow > 5) return [];
   const at = (h, m) => new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0).getTime();
-  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka', 'westfield-woden-hcf', 'ph-ainslie', 'ph-kingston', 'ph-jerrabomberra']
-    .filter((id) => !id.startsWith('psd-') || [1, 3, 5].includes(dow));
-  const blocks = [];
-  order.forEach((id, i) => {
-    let start = id === 'psd-manuka' ? Math.max(at(18, 0) + i * 6 * MIN, at(18, 45)) : at(18, 0) + i * 6 * MIN;
-    // HCF shares Kinga's login with PSD-Manuka: separate session >= 10 min after it.
-    const prev = blocks[blocks.length - 1];
-    if (prev) start = Math.max(start, prev.hi + 3 * MIN); // keep batch order monotonic, >= 3 min apart
-    if (prev && prev.account === acct[id]) start = Math.max(start, prev.hi + 3 * MIN + SAME_ACCOUNT_GAP);
-    blocks.push({ label: `batch:${id}`, account: acct[id], lo: start - MIN, hi: start + 3 * MIN });
-  });
+  const blocks = planBatch(base, acct).map((p) => ({ label: `batch:${p.id}`, account: p.account, lo: p.time - MIN, hi: p.time + 3 * MIN }));
   blocks.push({ label: 'bega-medical', account: acct['bega-medical'], lo: at(22, 0) - MIN, hi: at(22, 0) + 3 * MIN });
   return blocks;
 }
@@ -149,7 +124,7 @@ function resolve(events, blocks) {
         if (Math.abs(t - p.time) < gap) { t = p.time + gap; moved = true; }
       }
       for (const b of blocks) {
-        if (b.account === e.account && t > b.lo - SAME_ACCOUNT_GAP && t < b.hi + SAME_ACCOUNT_GAP) { t = b.hi + SAME_ACCOUNT_GAP; moved = true; }
+        if (b.account === e.account && t > b.lo - accountGap(e) && t < b.hi + accountGap(e)) { t = b.hi + accountGap(e); moved = true; }
       }
       if (!moved) break;
     }
@@ -198,7 +173,8 @@ async function enqueue(token, name, whenMs, jobName) {
     const lib = require(`../scripts/lib/${site}-schedule`);
     rawTargets[site] = MON_FRI_ONLY.has(site) && weekend ? null : lib.computeTargets(base);
   }
-  sequenceAccountBlocks(rawTargets, SITES, acct);
+  const blocks = reservedBlocks(base, acct);
+  sequenceAccountBlocks(rawTargets, SITES, acct, blocks);
 
   const events = [];
   for (const site of SITES) {
@@ -210,7 +186,6 @@ async function enqueue(token, name, whenMs, jobName) {
     }
   }
 
-  const blocks = reservedBlocks(base, acct);
   const final = resolve(events, blocks).sort((a, b) => a.time - b.time);
   const names = siteNames();
   for (const e of final) {

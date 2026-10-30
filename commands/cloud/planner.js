@@ -229,7 +229,7 @@ async function enqueue(token, name, whenMs, jobName) {
   let header = `Plan for ${base.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}`;
   if (NOTIFY_ONLY) {
     // the fixed-time jobs: 6pm batch (sites in order) and the 10pm Bega-Medical check-in
-    const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'ph-ainslie', 'ph-kingston', 'ph-jerrabomberra']);
+    const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'westfield-woden-hcf', 'ph-ainslie', 'ph-kingston', 'ph-jerrabomberra']);
     const batchLines = [];
     for (const b of blocks) {
       const id = b.label.replace('batch:', '');

@@ -122,7 +122,7 @@ function reservedBlocks(base, acct) {
   const dow = base.getDay();
   if (dow < 1 || dow > 5) return [];
   const at = (h, m) => new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0).getTime();
-  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka', 'westfield-woden-hcf', 'ph-ainslie', 'ph-kingston']
+  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka', 'westfield-woden-hcf', 'ph-ainslie', 'ph-kingston', 'ph-jerrabomberra']
     .filter((id) => !id.startsWith('psd-') || [1, 3, 5].includes(dow));
   const blocks = [];
   order.forEach((id, i) => {
@@ -229,7 +229,7 @@ async function enqueue(token, name, whenMs, jobName) {
   let header = `Plan for ${base.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}`;
   if (NOTIFY_ONLY) {
     // the fixed-time jobs: 6pm batch (sites in order) and the 10pm Bega-Medical check-in
-    const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'ph-ainslie', 'ph-kingston']);
+    const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'ph-ainslie', 'ph-kingston', 'ph-jerrabomberra']);
     const batchLines = [];
     for (const b of blocks) {
       const id = b.label.replace('batch:', '');

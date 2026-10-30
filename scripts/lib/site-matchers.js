@@ -39,6 +39,7 @@ const MATCHERS = {
   // (GILES) and Kingston-Gallagher; neither can match Belconnen-PO (which now excludes PARTNERED).
   'PH-Ainslie':          { all: ['AINSLIE'], excludeAny: ['BELCONNEN', 'GALLAGHER'] },
   'PH-Kingston':         { all: [], any: ['WENTWORTH', 'KINGSTON'], excludeAny: ['GALLAGHER', 'GILES', 'BELCONNEN', 'AINSLIE', 'JERRABOMBERRA'] },
+  'PH-Jerrabomberra':    { all: ['JERRABOMBERRA'] },                    // Dimeo site 12145; card text not confirmed verbatim
   'HCF-Phillip':         { all: ['HCF'] },                               // confirmed: "Phillip Branch / HCF" (site registration pending as of 2026-10-18, so not clickable yet)
 };
 

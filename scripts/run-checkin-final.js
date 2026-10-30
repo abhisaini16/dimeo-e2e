@@ -17,7 +17,7 @@ const SAME_ACCOUNT_GAP_MS = 10 * 60 * 1000;
 const SEPARATE_SESSION = new Set(['westfield-woden-hcf', 'ph-kingston']);
 
 // These sites only ever need a check-in (the portal finishes the shift itself).
-const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'ph-ainslie', 'ph-kingston']);
+const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'ph-ainslie', 'ph-kingston', 'ph-jerrabomberra']);
 // Which Sydney weekdays (0=Sun..6=Sat) each site is signed in on. PSD sites: Mon/Wed/Fri
 // nights only; everything else Mon-Fri. Public holidays are NOT special-cased — the
 // script still runs and the live portal reports no-active-shift. Set RUN_ALL_DAYS=true
@@ -47,6 +47,8 @@ const SELECTED_IDS = [
   // Kingston is its own session >= 10 min after Ainslie (same-login rule).
   'ph-ainslie',
   'ph-kingston',
+  // Partnered Health Jerrabomberra (12145), check-in only, Tshering Drukpa's login.
+  'ph-jerrabomberra',
 ];
 
 (async () => {

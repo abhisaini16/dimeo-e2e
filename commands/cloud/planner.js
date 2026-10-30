@@ -122,13 +122,14 @@ function reservedBlocks(base, acct) {
   const dow = base.getDay();
   if (dow < 1 || dow > 5) return [];
   const at = (h, m) => new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0).getTime();
-  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka', 'westfield-woden-hcf']
+  const order = ['kingston-gallagher', 'qbe', 'psd-woden', 'psd-tuggeranong', 'psd-queenbeyan', 'suncorp-phillip', 'psd-manuka', 'westfield-woden-hcf', 'ph-ainslie', 'ph-kingston']
     .filter((id) => !id.startsWith('psd-') || [1, 3, 5].includes(dow));
   const blocks = [];
   order.forEach((id, i) => {
     let start = id === 'psd-manuka' ? Math.max(at(18, 0) + i * 6 * MIN, at(18, 45)) : at(18, 0) + i * 6 * MIN;
     // HCF shares Kinga's login with PSD-Manuka: separate session >= 10 min after it.
     const prev = blocks[blocks.length - 1];
+    if (prev) start = Math.max(start, prev.hi + 3 * MIN); // keep batch order monotonic, >= 3 min apart
     if (prev && prev.account === acct[id]) start = Math.max(start, prev.hi + 3 * MIN + SAME_ACCOUNT_GAP);
     blocks.push({ label: `batch:${id}`, account: acct[id], lo: start - MIN, hi: start + 3 * MIN });
   });
@@ -228,7 +229,7 @@ async function enqueue(token, name, whenMs, jobName) {
   let header = `Plan for ${base.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}`;
   if (NOTIFY_ONLY) {
     // the fixed-time jobs: 6pm batch (sites in order) and the 10pm Bega-Medical check-in
-    const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip']);
+    const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'ph-ainslie', 'ph-kingston']);
     const batchLines = [];
     for (const b of blocks) {
       const id = b.label.replace('batch:', '');

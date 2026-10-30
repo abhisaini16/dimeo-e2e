@@ -12,7 +12,7 @@ const MATCHERS = {
   'Canberra-GPO':        { all: ['CANBERRA', 'GPO'], excludeAny: ['QBE'] }, // confirmed: "CANBERRA GPO"
   'QBE':                 { all: ['QBE'] },                              // confirmed: "Canberra - QBE"
   'Macquarie-PO':        { all: ['MACQUARIE'] },                        // confirmed: "MACQUARIE-JAMISON CTR-PO"
-  'Belconnen-PO':        { all: ['BELCONNEN'], excludeAny: ['PSD'] },   // confirmed: "BELCONNEN-WESTFIELD SC-MX"; excludes a possible "PSD Belconnen" clinic shift
+  'Belconnen-PO':        { all: ['BELCONNEN'], excludeAny: ['PSD', 'PARTNERED', 'NORTH CANBERRA'] },   // confirmed: "BELCONNEN-WESTFIELD SC-MX"; excludes a possible "PSD Belconnen" clinic shift
   'Jindabyne-PO':        { all: ['JINDABYNE'] },                        // confirmed: "JINDABYNE-6, 6 GIPPSLAND ST-PO"
   'Merimbula-PO':        { all: ['MERIMBULA'] },                        // confirmed: "MERIMBULA-MERIMBULA DR-PO"
   'Bega-PO':             { all: ['BEGA'], excludeAny: ['MEDIC'] },      // NOT confirmed verbatim on a card yet; address check is the real gate
@@ -34,6 +34,11 @@ const MATCHERS = {
   'Cooma-PO':            { all: ['COOMA'] },                            // confirmed shift exists as "COOMA-VALE ST-PO"; NOTE address mismatch, see sites.json
   'BMD':                 { all: ['WHITLAM'] },                          // confirmed: "Whitlam Site Shed"
   'Yass-PO':             { all: ['YASS'] },                             // confirmed: "YASS-COMUR ST-MX"
+  // Partnered Health (DAS live from 2026-10-30). Card text NOT confirmed verbatim yet; the
+  // address cross-check (sites.json) is the real gate. Kingston one excludes Kingston-PO
+  // (GILES) and Kingston-Gallagher; neither can match Belconnen-PO (which now excludes PARTNERED).
+  'PH-Ainslie':          { all: ['AINSLIE'], excludeAny: ['BELCONNEN', 'GALLAGHER'] },
+  'PH-Kingston':         { all: [], any: ['WENTWORTH', 'KINGSTON'], excludeAny: ['GALLAGHER', 'GILES', 'BELCONNEN', 'AINSLIE', 'JERRABOMBERRA'] },
   'HCF-Phillip':         { all: ['HCF'] },                               // confirmed: "Phillip Branch / HCF" (site registration pending as of 2026-10-18, so not clickable yet)
 };
 
@@ -42,8 +47,9 @@ function cardMatchesSite(cardText, siteKey) {
   if (!matcher) throw new Error(`No card matcher defined for site key "${siteKey}"`);
   const upper = cardText.toUpperCase();
   const allOk = matcher.all.every((s) => upper.includes(s.toUpperCase()));
+  const anyOk = !matcher.any || matcher.any.some((s) => upper.includes(s.toUpperCase()));
   const excluded = (matcher.excludeAny || []).some((s) => upper.includes(s.toUpperCase()));
-  return allOk && !excluded;
+  return allOk && anyOk && !excluded;
 }
 
 module.exports = { MATCHERS, cardMatchesSite };

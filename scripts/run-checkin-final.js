@@ -14,10 +14,10 @@ const INTER_SITE_DELAY_MS = 5 * 60 * 1000;
 // Gap before a new session on the same login as the previous session (planner rule).
 const SAME_ACCOUNT_GAP_MS = 10 * 60 * 1000;
 // Sites that always get their own login session (never merged with the previous site).
-const SEPARATE_SESSION = new Set(['westfield-woden-hcf']);
+const SEPARATE_SESSION = new Set(['westfield-woden-hcf', 'ph-kingston']);
 
 // These sites only ever need a check-in (the portal finishes the shift itself).
-const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip']);
+const CHECKIN_ONLY = new Set(['kingston-gallagher', 'qbe', 'suncorp-phillip', 'ph-ainslie', 'ph-kingston']);
 // Which Sydney weekdays (0=Sun..6=Sat) each site is signed in on. PSD sites: Mon/Wed/Fri
 // nights only; everything else Mon-Fri. Public holidays are NOT special-cased — the
 // script still runs and the live portal reports no-active-shift. Set RUN_ALL_DAYS=true
@@ -43,6 +43,10 @@ const SELECTED_IDS = [
   // Same login as PSD-Manuka, so it runs after it as its own separate session with a
   // >= 10 min gap (SAME_ACCOUNT_GAP_MS) — never two logins on her account at once.
   'westfield-woden-hcf',
+  // Partnered Health (DAS live 2026-10-30), check-in only, both on Ugyen Zeppa's login.
+  // Kingston is its own session >= 10 min after Ainslie (same-login rule).
+  'ph-ainslie',
+  'ph-kingston',
 ];
 
 (async () => {

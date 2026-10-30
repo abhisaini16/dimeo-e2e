@@ -88,6 +88,8 @@ const SELECTED_IDS = [
     const results = await runGroup(group, { interSiteDelayMs: INTER_SITE_DELAY_MS, mode: checkinOnly ? 'checkin' : 'both' });
     lastActual[acctKey] = sydneyNow().getTime();
     allResults.push(...results);
+    // Abhi (2026-10-31): a Telegram notification for every site as it runs, not just the end summary.
+    postResultsToGitHubIssue(results, `Daily batch: ${e.label}`, new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' }));
   }
 
   console.log('\n=== Final combined summary ===');

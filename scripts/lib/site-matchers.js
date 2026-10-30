@@ -8,6 +8,7 @@
 const MATCHERS = {
   'Mitchell-PO':        { all: ['MITCHELL'] },                         // confirmed: "MITCHELL-FLEMINGTON RD-PO"
   'Kingston-PO':         { all: ['KINGSTON', 'GILES'] },                // confirmed: "KINGSTON-GILES ST-PO"; excludes Kingston-Gallagher
+  'Batemans-Bay-PO':     { all: ['BATEMANS'] },                         // confirmed: "BATEMANS BAY-ORIENT ST-PO"
   'Narooma-PO':          { all: ['NAROOMA'] },                          // confirmed: "NAROOMA-WAGONGA ST-PO"
   'Canberra-GPO':        { all: ['CANBERRA', 'GPO'], excludeAny: ['QBE'] }, // confirmed: "CANBERRA GPO"
   'QBE':                 { all: ['QBE'] },                              // confirmed: "Canberra - QBE"

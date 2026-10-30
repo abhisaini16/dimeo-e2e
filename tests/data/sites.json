@@ -1,6 +1,7 @@
 [
   { "name": "Mitchell-PO", "manager": "Daniel", "address": "141 Flemington Road, Mitchell, ACT", "lat": -35.21915108, "lon": 149.1446373 },
   { "name": "Kingston-PO", "manager": "Daniel", "address": "82 Giles St, Kingston, ACT", "lat": -35.31500482, "lon": 149.1419444 },
+  { "name": "Batemans-Bay-PO", "address": "7 Orient Street, Batemans Bay, NSW", "lat": -35.710135, "lon": 150.1772759 },
   { "name": "Narooma-PO", "manager": "Daniel", "address": "112 Wagonga Street, Narooma, NSW", "lat": -36.21845748, "lon": 150.1320174 },
   { "name": "Canberra-GPO", "manager": "Daniel", "address": "53 Alinga Street, Canberra, ACT", "lat": -35.2782075, "lon": 149.127903 },
   { "name": "QBE", "manager": "Daniel", "address": "53 Alinga Street, Canberra, ACT", "lat": -35.2782075, "lon": 149.127903, "note": "shares coordinates with Canberra-GPO (per user)" },

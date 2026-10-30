@@ -22,8 +22,9 @@ jobs['daily-batch'] = { script: 'scripts/run-checkin-final.js', env: {}, cron: '
 jobs['bega-medical'] = { script: 'scripts/run-bega-medical.js', env: {}, cron: '0 22 * * *' };
 // BMD (Whitlam Site Shed): real shift is Tue/Wed/Fri 9am-2pm only, but this fires every
 // day on purpose at a fixed midday time — see run-bmd-checkin.js for why.
-jobs['bmd-checkin'] = { script: 'scripts/run-bmd-checkin.js', env: {}, cron: '0 12 * * *' };
-jobs['bmd-checkout'] = { script: 'scripts/run-bmd-checkout.js', env: {}, cron: '15 12 * * *' };
+// 2026-10-30: Abhi asked to limit it to Tue/Wed/Fri only (the real shift days).
+jobs['bmd-checkin'] = { script: 'scripts/run-bmd-checkin.js', env: {}, cron: '0 12 * * 2,3,5' };
+jobs['bmd-checkout'] = { script: 'scripts/run-bmd-checkout.js', env: {}, cron: '15 12 * * 2,3,5' };
 
 // Morning planner (second run is a safety net — task names are deterministic so re-runs
 // never duplicate anything, and targets already in the past are skipped).

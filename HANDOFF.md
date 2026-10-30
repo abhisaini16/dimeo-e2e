@@ -197,7 +197,7 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   attempt using the abhiaus980 login (same as Fyshwick/Queenbeyan) — NOT the old Ugyenzeppa55 login checkin-sites.json had on
   file, which was replaced. The real shift (confirmed live) is only Tue/Wed/Fri 9am-2pm, but per the owner's own instruction this
   runs EVERY day at a fixed 12:00pm check-in / 12:15pm check-out (two dedicated Scheduler jobs, `dimeo-bmd-checkin`/`-checkout`,
-  cron `0 12 * * *`/`15 12 * * *` — not the randomized planner, since the times are fixed, not clash-managed) — on a day with
+  cron `0 12 * * 2,3,5`/`15 12 * * 2,3,5` (Tue/Wed/Fri only since 2026-10-30) — not the randomized planner, since the times are fixed, not clash-managed) — on a day with
   no real shift it just reports "no-shift-today" (the owner explicitly wants this, not an error). Verified end-to-end live
   (both legs correctly found Tuesday's shift as nearest and reported no-shift-today, logged in fine, posted to Telegram).
   First real occurrence: Tue 2026-10-20.

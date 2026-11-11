@@ -201,6 +201,18 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   no real shift it just reports "no-shift-today" (the owner explicitly wants this, not an error). Verified end-to-end live
   (both legs correctly found Tuesday's shift as nearest and reported no-shift-today, logged in fine, posted to Telegram).
   First real occurrence: Tue 2026-10-20.
+  **UPDATE 2026-11-11 (checked end to end, nothing broken in the automation):** the live `checkin-sites` secret's `bmd`
+  entry has used **Ugyen Zeppa's login (ugyenzeppa55@), not abhiaus980**, since secret v11 (2026-10-30 ~9am Sydney);
+  the "abhiaus980" note above is stale. Ugyen is assigned + registered at Whitlam (site 15678, schedule 2586), so this
+  works. DIMEO shift history 20 Oct - 11 Nov: every shift (20/21/23/27/28/30 Oct, 3/6/10/11 Nov) has a real
+  self-logged check-in ~12:00:30-12:01 and check-out ~12:15:30 by the automation's login, EXCEPT Wed 4 Nov, where a
+  manual "Connectivity Issue" attendance (09:00-14:00, logged by the CBR office account) was entered *before* 12pm,
+  so the 12:00 run saw the shift as Finished and correctly did nothing (`already-done`). On 10/11 Nov the same kind
+  of early manual entry was added on top of the automation's real one. Root cause of "BMD needing manual attendance"
+  = a separate 9:15am attendance-clearing routine (outside this repo) treating the still-open 9am-2pm shift as
+  pending and clearing it before the 12:00 run; that routine now skips same-day shifts. **Rule: never manually
+  attend a Whitlam shift before ~12:20pm on its own day; the automation needs it untouched until then.**
+  Scheduler jobs `dimeo-bmd-checkin`/`-checkout` ENABLED, firing on time (Cloud Run executions all exit 0).
 - **Westfield Woden - HCF (Phillip Branch) added 2026-10-18, code-only — NOT live yet.** Owner's own
   yongzindorji@gmail.com login (solo, not shared with anything else). Real shift confirmed live: Mon-Fri 6pm-6am,
   matcher `{ all: ['HCF'] }` in `site-matchers.js` (card reads "Phillip Branch / HCF"). Added to the actual "daily

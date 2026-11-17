@@ -257,18 +257,22 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
      are never pushed by the 3-min GLOBAL_GAP (safe: Rajat's login is used nowhere else); other sites still space around
      them. Kinley (`city-post`) left as-is: his runs log in fine but find no Canberra GPO shift on his account
      (`no-shift-found`, his GPO registration isn't approved), so only Rajat actually attends. Image `dimeo-checkin:3ea7861`.
-  2. **Merimbula PO** moved from Dhanesh (`Dhanesh.7n@`) to **Shashika (`shashikaprasani97@`)**, email+password copied
-     from the `bega-po` entry — Secret Manager `checkin-sites` **v18**. **Shashika is NOT site-registered at Merimbula in
-     DIMEO (only Bega Carp St) and isn't on the Merimbula schedule**, so until a site registration is approved her
-     Merimbula runs will most likely report no-shift-found / no check-in. Because she now shares one login across Bega PO
-     and Merimbula, `sequenceAccountBlocks()` runs the two sessions back to back with the 27-34 min gap (e.g. 17 Nov:
-     Merimbula 5:30-7:05pm, then Bega PO 7:33-9:18pm; which goes first varies by day).
+  2. **Merimbula PO: REVERTED to Dhanesh (`Dhanesh.7n@`) the same day — secret v19 (= v17 content; v18 had briefly
+     put Shashika on it).** Abhi's decision: request Shashika's Merimbula site registration first and keep Dhanesh until
+     it's approved. Requested 2026-11-17 via `dimeo sites assign 13161 --cleaner 4545 --submit` -> **RQ40820, Pending
+     Review** (rule checks passed). **TODO: once RQ40820 is Approved (`dimeo --json cleaners show 4545 --tab sites`),
+     switch Merimbula to Shashika (`shashikaprasani97@`): copy the latest secret, copy email+password from the `bega-po`
+     entry into the `merimbula` entry, add a new `checkin-sites` version (no rebuild).** Expect then: one login across
+     Bega PO and Merimbula, so `sequenceAccountBlocks()` runs the two sessions back to back with the 27-34 min gap
+     (which site goes first varies by day; Bega PO's time moves accordingly) — re-plan that day's queue per the procedure.
   3. **Cooma PO** is still on **`abhiaus980@`** (changed from Francis to Abhi in v17, 2026-11-05 — NOT to Minh, despite
      notes elsewhere). To switch to **Minh Bui (`minhbuitom05@gmail.com`, DIMEO 2638, approved at Cooma Vale St and Sharp
      St)**: copy the latest secret, set the `cooma` entry's `email` and `password`, add a new `checkin-sites` version. No
      rebuild needed (mounted `latest`). Sharp St has no separate entry; the `Cooma-PO` matcher (`COOMA`) covers whichever
      Cooma shift the login has (Sharp St currently has no schedule). Not done yet: password not provided.
-  Today's queue fixed per the procedure above (6 stale tasks deleted, planner re-run, exact-name diff clean). **New gotcha:
+  Today's queue fixed per the procedure above (6 stale tasks deleted, planner re-run, exact-name diff clean); after the
+  Merimbula revert, the 3 restored tasks (Bega PO in/out, Batemans Bay in) had names deleted <1h earlier, so they were
+  created by hand with a `-b` suffix (same payload/time) instead of re-running the planner. **New gotcha:
   re-running `dimeo-planner` after 03:00 re-creates the after-midnight Fyshwick checkout that the box's daily
   `/workspace/dimeo-midnight-audit/requeue.sh` had replaced with a `midnight-fix-*` task — delete the re-created
   `fyshwick-checkout-<date>-01xx` (or re-run requeue.sh) after any manual planner re-run.**

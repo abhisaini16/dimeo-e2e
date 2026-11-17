@@ -42,7 +42,8 @@ Playwright scripts log in to the Dimeo cleaner portal (`portal.dimeo.com.au`) an
   Weekday + Saturday: queenbeyan, kingston, fyshwick, belconnen (6:15-6:30pm, same window both day-types since 2026-10-08), weston, greenway.
   No Sunday shifts.
   **Canberra GPO has two people, two separate site IDs, same physical site:** `city-post` (Kinley, existing) and `city-post-rajat`
-  (Rajat, added 2026-10-08, `rajatahuja57@gmail.com`). Both check in independently 6:15-6:30pm, check out ~2.5-2.75h later — different
+  (Rajat, added 2026-10-08, `rajatahuja57@gmail.com`). Kinley checks in 6:15-6:30pm, out ~2.5-2.75h later; **Rajat since 2026-11-17: in
+  6:04:30-6:31:30pm, out 287-301 min later, pinned exact by `EXACT_SITES` in planner.js (see 2026-11-17 note below)** — different
   schedule-lib hash salts (`lib/city-post-schedule.js` / `lib/city-post-rajat-schedule.js`) keep their random times from landing on the
   same minute. They are NOT a shared login (two different accounts), so none of the `RANDOM_GAP_ACCOUNTS`/`sequenceAccountBlocks()`
   machinery applies — only the default 3-min `GLOBAL_GAP` keeps them from colliding, same as any two unrelated actions.
@@ -246,6 +247,31 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
   On Mon/Tue/Thu (no PSD) HCF just follows Suncorp-Phillip after the usual 5 min. Note: PSD-Manuka's login is
   Kinga's, not Griffith's (aus362@) — the older "shares a login with Griffith" notes are stale; and
   `NOT_BEFORE_MIN` is set but never enforced by `runGroup()`.
+
+- **2026-11-17 (Abhi, owner message pt142u): three login/timing changes.**
+  1. **Canberra GPO, Rajat (`city-post-rajat`)**: `lib/city-post-rajat-schedule.js` now checks in at 6:04pm + 30s +
+     hash%(27 min) (= 6:04:30-6:31:30pm; the 30s margins absorb the 45s task lead / ~30-40s container start so the real
+     click stays inside 6:04-6:32pm), same weekday and Saturday (DIMEO GPO window: Mon-Fri 4pm->9am, Sat 12:30pm->9am, so
+     6:04pm is inside both). Stay = 287 + hash%15 = **287-301 whole minutes**; latest check-out 11:33pm, so never after
+     midnight. New `EXACT_SITES` set in `planner.js`'s `resolve()`: these sites keep their schedule-lib times exactly and
+     are never pushed by the 3-min GLOBAL_GAP (safe: Rajat's login is used nowhere else); other sites still space around
+     them. Kinley (`city-post`) left as-is: his runs log in fine but find no Canberra GPO shift on his account
+     (`no-shift-found`, his GPO registration isn't approved), so only Rajat actually attends. Image `dimeo-checkin:3ea7861`.
+  2. **Merimbula PO** moved from Dhanesh (`Dhanesh.7n@`) to **Shashika (`shashikaprasani97@`)**, email+password copied
+     from the `bega-po` entry — Secret Manager `checkin-sites` **v18**. **Shashika is NOT site-registered at Merimbula in
+     DIMEO (only Bega Carp St) and isn't on the Merimbula schedule**, so until a site registration is approved her
+     Merimbula runs will most likely report no-shift-found / no check-in. Because she now shares one login across Bega PO
+     and Merimbula, `sequenceAccountBlocks()` runs the two sessions back to back with the 27-34 min gap (e.g. 17 Nov:
+     Merimbula 5:30-7:05pm, then Bega PO 7:33-9:18pm; which goes first varies by day).
+  3. **Cooma PO** is still on **`abhiaus980@`** (changed from Francis to Abhi in v17, 2026-11-05 — NOT to Minh, despite
+     notes elsewhere). To switch to **Minh Bui (`minhbuitom05@gmail.com`, DIMEO 2638, approved at Cooma Vale St and Sharp
+     St)**: copy the latest secret, set the `cooma` entry's `email` and `password`, add a new `checkin-sites` version. No
+     rebuild needed (mounted `latest`). Sharp St has no separate entry; the `Cooma-PO` matcher (`COOMA`) covers whichever
+     Cooma shift the login has (Sharp St currently has no schedule). Not done yet: password not provided.
+  Today's queue fixed per the procedure above (6 stale tasks deleted, planner re-run, exact-name diff clean). **New gotcha:
+  re-running `dimeo-planner` after 03:00 re-creates the after-midnight Fyshwick checkout that the box's daily
+  `/workspace/dimeo-midnight-audit/requeue.sh` had replaced with a `midnight-fix-*` task — delete the re-created
+  `fyshwick-checkout-<date>-01xx` (or re-run requeue.sh) after any manual planner re-run.**
 
 ## Open items
 - Watch the first full day of real runs (first real scheduled check-in: 2026-10-05 ~5:01pm). No automatic retry exists for Dimeo check-ins yet.

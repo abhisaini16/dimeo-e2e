@@ -5,6 +5,11 @@
 // salts, so the two accounts' random times land differently even on the same day. No
 // shared-login gap logic applies here: these are two separate accounts, not one login
 // covering multiple sites.
+// 2026-11-17 (Abhi): Rajat now checks in at a random time between 6:04pm and 6:32pm
+// (weekday and Saturday alike; GPO's DIMEO window is 4pm/12:30pm Sat -> 9am, so 6:04pm is
+// inside both) and stays a random 287-301 min (whole minutes) before checking out
+// (latest possible check-out 11:33pm). The planner pins these times exactly
+// (EXACT_SITES in commands/cloud/planner.js) so clash-spacing can't move them.
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -27,9 +32,12 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 18, startMinute: 15, windowMin: 15 }, // 6:15pm-6:30pm
-  saturday: { startHour: 18, startMinute: 15, windowMin: 15 }, // 6:15pm-6:30pm
+  weekday: { startHour: 18, startMinute: 4, windowMin: 28 }, // 6:04pm-6:32pm
+  saturday: { startHour: 18, startMinute: 4, windowMin: 28 }, // 6:04pm-6:32pm
 };
+
+const MIN_STAY = 287; // minutes on site, inclusive
+const MAX_STAY = 301;
 
 // `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).
 function computeTargets(base) {
@@ -40,10 +48,12 @@ function computeTargets(base) {
   const dateKey = `${base.getFullYear()}-${base.getMonth() + 1}-${base.getDate()}`;
 
   const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), startHour, startMinute, 0);
-  const checkinOffsetSec = simpleHash(dateKey + '-city-post-rajat-checkin') % (windowMin * 60 + 1);
+  // 30s margin at each end: the task fires 45s early and the click lands ~30-40s after
+  // container start, so this keeps the real click inside 6:04-6:32pm.
+  const checkinOffsetSec = 30 + (simpleHash(dateKey + '-city-post-rajat-checkin') % (windowMin * 60 - 60 + 1));
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
-  const delayMin = 150 + (simpleHash(dateKey + '-city-post-rajat-checkout-delay') % 16); // 150..165 inclusive (2.5-2.75h)
+  const delayMin = MIN_STAY + (simpleHash(dateKey + '-city-post-rajat-checkout-delay') % (MAX_STAY - MIN_STAY + 1)); // 287..301 inclusive
   const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
 
   return { dayType, checkinTarget, checkoutTarget, delayMin, dateKey };

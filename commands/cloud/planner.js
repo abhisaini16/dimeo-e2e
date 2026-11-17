@@ -112,11 +112,18 @@ function reservedBlocks(base, acct) {
   return blocks;
 }
 
+// Sites whose schedule-lib times are used EXACTLY, never pushed by clash-spacing.
+// 2026-11-17 (Abhi): Rajat at Canberra GPO must check in 6:04-6:32pm and stay 287-301 min,
+// so the 3-min GLOBAL_GAP must not nudge him outside that. Safe because his login is used
+// at no other site (no same-account gap to keep); other sites still space around him.
+const EXACT_SITES = new Set(['city-post-rajat']);
+
 // Pushes events (forward only) until every rule holds. Returns events with `time` final.
 function resolve(events, blocks) {
   const placed = [];
   for (const e of events.sort((a, b) => a.orig - b.orig)) {
     let t = e.orig;
+    if (EXACT_SITES.has(e.site)) { e.time = t; placed.push(e); continue; }
     for (let guard = 0; guard < 200; guard++) {
       let moved = false;
       for (const p of placed) {

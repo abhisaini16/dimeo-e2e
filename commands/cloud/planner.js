@@ -16,6 +16,13 @@
 const { SITES } = require('./jobs');
 const { sendTelegramText } = require('../scripts/lib/notify');
 
+// Sites kept in jobs.js (scripts + secret stay, can be run manually) but not
+// scheduled by the planner. Reversible: remove from this set.
+// 2026-11-19 (Abhi): old Kinley `city-post` GPO entry finds no shift every
+// night; the live plan is Rajat then Mohammed only.
+const DISABLED_SITES = new Set(['city-post']);
+const PLAN_SITES = SITES.filter((s) => !DISABLED_SITES.has(s));
+
 const PROJECT = process.env.GCP_PROJECT || 'cbr-automation-510513';
 const REGION = process.env.GCP_REGION || 'australia-southeast1';
 const QUEUE = 'dimeo-actions';
@@ -176,15 +183,15 @@ async function enqueue(token, name, whenMs, jobName) {
   const weekend = base.getDay() === 0 || base.getDay() === 6;
 
   const rawTargets = {};
-  for (const site of SITES) {
+  for (const site of PLAN_SITES) {
     const lib = require(`../scripts/lib/${site}-schedule`);
     rawTargets[site] = MON_FRI_ONLY.has(site) && weekend ? null : lib.computeTargets(base);
   }
   const blocks = reservedBlocks(base, acct);
-  sequenceAccountBlocks(rawTargets, SITES, acct, blocks);
+  sequenceAccountBlocks(rawTargets, PLAN_SITES, acct, blocks);
 
   const events = [];
-  for (const site of SITES) {
+  for (const site of PLAN_SITES) {
     const t = rawTargets[site];
     if (!t) { lines.push(`➖ ${site}: no shift today`); continue; }
     if (!acct[site]) throw new Error(`no account for ${site} in checkin-sites.json`);
@@ -251,7 +258,7 @@ async function enqueue(token, name, whenMs, jobName) {
 
     const byGroup = new Map(GROUP_ORDER.map((g) => [g, []]));
     const soloSites = [];
-    for (const site of SITES) {
+    for (const site of PLAN_SITES) {
       if (CANBERRA_GPO[site] || !bySite[site] || !bySite[site].checkin) continue;
       const groupLabel = GROUP_LABELS[acct[site]];
       if (groupLabel) byGroup.get(groupLabel).push(site);

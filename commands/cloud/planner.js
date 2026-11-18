@@ -83,7 +83,7 @@ const dateArg = (process.argv.find((a) => a.startsWith('--date=')) || '').slice(
 // These sites work Mon-Fri only (their schedule libs have no day-type of their own).
 // Public holidays are NOT special-cased: the script still runs and the live portal
 // reports no-active-shift when there's no shift.
-const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie', 'bega-po', 'merimbula', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell', 'dickson', 'batemans-bay']);
+const MON_FRI_ONLY = new Set(['yass', 'cooma', 'macquarie', 'bega-po', 'merimbula', 'merimbula-shashika', 'griffith', 'narooma', 'mawson', 'phillip', 'mitchell', 'dickson', 'batemans-bay']);
 
 const runUrl = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/dimeo-checkin:run`;
 // Normal 12-hour clock for Telegram (5:19 pm), and a sortable HHMM for task names.
@@ -113,7 +113,7 @@ function reservedBlocks(base, acct) {
 }
 
 // Sites whose schedule-lib times are used EXACTLY, never pushed by clash-spacing.
-// 2026-11-17 (Abhi): Rajat at Canberra GPO must check in 6:04-6:32pm and stay 287-301 min,
+// 2026-11-17 (Abhi): Rajat at Canberra GPO must check in 6:04-6:32pm and stay 287-301 min (140-162 since 2026-11-18),
 // so the 3-min GLOBAL_GAP must not nudge him outside that. Safe because his login is used
 // at no other site (no same-account gap to keep); other sites still space around him.
 const EXACT_SITES = new Set(['city-post-rajat']);
@@ -236,7 +236,7 @@ async function enqueue(token, name, whenMs, jobName) {
       'shashikaprasani97@gmail.com': 'Shashika',
     };
     const GROUP_ORDER = ['Shikha', 'Abrar Khan', 'RajKumar', 'Abhi', 'Tzangpo', 'Tom', 'Anshika', 'Bimal Thapa', 'Shashika'];
-    const CANBERRA_GPO = { 'city-post': 'Kinley', 'city-post-rajat': 'Rajat' };
+    const CANBERRA_GPO = { 'city-post': 'Kinley', 'city-post-rajat': 'Rajat', 'city-post-mohammed': 'Mohammed' };
 
     const bySite = {};
     for (const e of final) { (bySite[e.site] ||= {})[e.action] = e.time; }

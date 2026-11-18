@@ -7,8 +7,8 @@
 // covering multiple sites.
 // 2026-11-17 (Abhi): Rajat now checks in at a random time between 6:04pm and 6:32pm
 // (weekday and Saturday alike; GPO's DIMEO window is 4pm/12:30pm Sat -> 9am, so 6:04pm is
-// inside both) and stays a random 287-301 min (whole minutes) before checking out
-// (latest possible check-out 11:33pm). The planner pins these times exactly
+// inside both) and stays a random 287-301 min (whole minutes) before checking out.
+// 2026-11-18 (Abhi): stay is now 140-162 min (latest possible check-out 9:14pm). The planner pins these times exactly
 // (EXACT_SITES in commands/cloud/planner.js) so clash-spacing can't move them.
 function simpleHash(str) {
   let h = 0;
@@ -36,8 +36,9 @@ const WINDOWS = {
   saturday: { startHour: 18, startMinute: 4, windowMin: 28 }, // 6:04pm-6:32pm
 };
 
-const MIN_STAY = 287; // minutes on site, inclusive
-const MAX_STAY = 301;
+// 2026-11-18 (Abhi): stay shortened to a random 140-162 min (was 287-301).
+const MIN_STAY = 140; // minutes on site, inclusive
+const MAX_STAY = 162;
 
 // `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).
 function computeTargets(base) {
@@ -53,7 +54,7 @@ function computeTargets(base) {
   const checkinOffsetSec = 30 + (simpleHash(dateKey + '-city-post-rajat-checkin') % (windowMin * 60 - 60 + 1));
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
-  const delayMin = MIN_STAY + (simpleHash(dateKey + '-city-post-rajat-checkout-delay') % (MAX_STAY - MIN_STAY + 1)); // 287..301 inclusive
+  const delayMin = MIN_STAY + (simpleHash(dateKey + '-city-post-rajat-checkout-delay') % (MAX_STAY - MIN_STAY + 1)); // 140..162 inclusive
   const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
 
   return { dayType, checkinTarget, checkoutTarget, delayMin, dateKey };

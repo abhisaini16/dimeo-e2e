@@ -36,6 +36,10 @@
   "label": "Merimbula PO"
  },
  {
+  "id": "merimbula-shashika",
+  "label": "Merimbula PO (Shashika)"
+ },
+ {
   "id": "bmd",
   "label": "BMD"
  },
@@ -94,6 +98,10 @@
  {
   "id": "city-post-rajat",
   "label": "Canberra GPO (Rajat)"
+ },
+ {
+  "id": "city-post-mohammed",
+  "label": "Canberra GPO (Mohammed)"
  },
  {
   "id": "mawson",

@@ -32,12 +32,14 @@ function getDayType(base) {
 }
 
 const WINDOWS = {
-  weekday: { startHour: 18, startMinute: 4, windowMin: 28 }, // 6:04pm-6:32pm
-  saturday: { startHour: 18, startMinute: 4, windowMin: 28 }, // 6:04pm-6:32pm
+  // 2026-11-18 11:38am (Abhi): Mon-Fri 6:02-6:37pm, Saturday 2:48-3:48pm (GPO Sat window opens 12:30pm).
+  weekday: { startHour: 18, startMinute: 2, windowMin: 35 }, // 6:02pm-6:37pm
+  saturday: { startHour: 14, startMinute: 48, windowMin: 60 }, // 2:48pm-3:48pm
 };
 
-// 2026-11-18 (Abhi): stay shortened to a random 140-162 min (was 287-301).
-const MIN_STAY = 140; // minutes on site, inclusive
+// 2026-11-18 (Abhi): stay a random 139-162 min (was 287-301). Mohammed's stay is drawn
+// independently and re-drawn if equal (lib/city-post-mohammed-schedule.js).
+const MIN_STAY = 139; // minutes on site, inclusive
 const MAX_STAY = 162;
 
 // `base` is a "Sydney wall-clock" Date (e.g. from sydneyNow()).
@@ -50,11 +52,11 @@ function computeTargets(base) {
 
   const checkinTarget = new Date(base.getFullYear(), base.getMonth(), base.getDate(), startHour, startMinute, 0);
   // 30s margin at each end: the task fires 45s early and the click lands ~30-40s after
-  // container start, so this keeps the real click inside 6:04-6:32pm.
+  // container start, so this keeps the real click inside the window.
   const checkinOffsetSec = 30 + (simpleHash(dateKey + '-city-post-rajat-checkin') % (windowMin * 60 - 60 + 1));
   checkinTarget.setSeconds(checkinTarget.getSeconds() + checkinOffsetSec);
 
-  const delayMin = MIN_STAY + (simpleHash(dateKey + '-city-post-rajat-checkout-delay') % (MAX_STAY - MIN_STAY + 1)); // 140..162 inclusive
+  const delayMin = MIN_STAY + (simpleHash(dateKey + '-city-post-rajat-checkout-delay') % (MAX_STAY - MIN_STAY + 1)); // 139..162 inclusive
   const checkoutTarget = new Date(checkinTarget.getTime() + delayMin * 60_000);
 
   return { dayType, checkinTarget, checkoutTarget, delayMin, dateKey };

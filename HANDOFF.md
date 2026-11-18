@@ -303,3 +303,17 @@ Image `dimeo-checkin:3d4b853`, secret `checkin-sites` **v21**, Telegram bot rede
 Today's queue: deleted `city-post-rajat-checkout-...-2259` and `fyshwick-checkin-...-2124` (1-min cascade), re-ran
 `dimeo-planner`, deleted the re-created `phillip-checkout-2026-11-18-0000` (midnight-fix task covers it). Exact-name
 diff vs `--dry` clean.
+
+### 2026-11-18 11:38am update (Abhi): Canberra GPO spec — image `dimeo-checkin:0d3677e`
+- Two cleaners daily, **Mon-Sat**: Rajat first (`city-post-rajat`), then Mohammed (`city-post-mohammed`).
+- Rajat check-in: **Mon-Fri 6:02-6:37pm, Sat 2:48-3:48pm** (30s inner margins). Mohammed = Rajat + 4-9 min.
+- Each stays a random **139-162 min**, drawn independently; Mohammed's is re-drawn (new salt) if it equals Rajat's.
+  Checked over 2 years of dates: never equal, always in spec.
+- Tonight only the two GPO check-in tasks changed: replaced `city-post-rajat-checkin-...-1806` -> `-1811` (6:11pm) and
+  `city-post-mohammed-checkin-...-1813` -> `-1818` (6:18pm) by hand (`gcloud tasks create-http-task`, same payload/45s lead).
+  Check-out task names (2048 / 2054) came out unchanged, so they were left; no other site's task was touched (the
+  planner would cascade a few unrelated sites by 2-3 min tonight; deliberately not re-run). Tomorrow's 12:05am planner
+  plans everything fresh.
+- **Merimbula: Abhi wants it moved fully to Shashika once Daniel (area manager) approves her request** (RQ40820 +
+  adding her to schedule 2525). Then delete the Dhanesh `merimbula` entry (SITES, MON_FRI_ONLY, secret, telegram list)
+  and keep `merimbula-shashika`. Until then Dhanesh's entry stays.

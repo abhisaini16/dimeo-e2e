@@ -281,3 +281,25 @@ Hostname `cbr-pi`, user `cbr-pi`, Debian 13, Sydney time, microSD, Wi-Fi. Passwo
 - Watch the first full day of real runs (first real scheduled check-in: 2026-10-05 ~5:01pm). No automatic retry exists for Dimeo check-ins yet.
 - Back up the Pi-only code (`~/command51-scan`, `~/pi-popup`) to a private repo; nothing of it is in git.
 - Disable Tailscale key expiry for the Pi (admin console), turn on 2-step verification on Tailscale/Claude/Raspberry Pi accounts.
+
+## 2026-11-18 (Abhi, owner message pt62u): GPO timing, Mohammed at GPO, Merimbula on Shashika's login
+Image `dimeo-checkin:3d4b853`, secret `checkin-sites` **v21**, Telegram bot redeployed (two new tappable entries).
+1. **Rajat (`city-post-rajat`)**: check-in window unchanged (6:04:30-6:31:30pm, pinned by `EXACT_SITES`); stay now a
+   random **140-162 min** (was 287-301). Latest check-out ~9:14pm.
+2. **Mohammed Ibrahim (`city-post-mohammed`, `362aus@gmail.com`, DIMEO cleaner 4610)**: new Canberra-GPO entry
+   (`lib/city-post-mohammed-schedule.js`): check-in = Rajat's target + random 4-9 min, stay 140-162 min, weekday +
+   Saturday. Password = the shared one (same as Rajat's entry). **Won't work until DAS adds him to the GPO cleaning
+   schedule timeslots** (schedules 1864 Mon-Fri and 1799 Sat; currently 4592 Rajat, 2772, 2599 Kinley, 1663 Abhi). His
+   GPO site registration is already Approved (RQ40811), but his My Cleans only has Batemans Bay; GPO appears only under
+   Available to Cover, which the runner never reads/clicks, so runs report `no-shift-found` (exit 1) until then.
+   Batemans Bay on his account is not automated (the `batemans-bay` entry uses Janith's login) — left alone.
+3. **Merimbula on Shashika's login (`merimbula-shashika`, same login as `bega-po`)**: check-in = Bega PO check-out
+   target + 27-34 min (planner's same-login sequencing also enforces it), stay 90-105 min (same as Bega PO), Mon-Fri.
+   ("Salika" in Abhi's message = Shashika; no DIMEO cleaner named Salika exists.) **Won't work until RQ40820
+   (Merimbula registration, Pending Review) is approved AND she is added to Merimbula schedule 2525's timeslots**
+   (currently 1663 Abhi, 4278 Dhanesh, 2527 Ramesh). The Dhanesh `merimbula` entry (5:25-5:35pm) is kept so Merimbula is
+   still covered meanwhile. **Once Shashika's runs succeed, remove the Dhanesh `merimbula` entry from SITES/secret**
+   (otherwise two people check in at Merimbula each night).
+Today's queue: deleted `city-post-rajat-checkout-...-2259` and `fyshwick-checkin-...-2124` (1-min cascade), re-ran
+`dimeo-planner`, deleted the re-created `phillip-checkout-2026-11-18-0000` (midnight-fix task covers it). Exact-name
+diff vs `--dry` clean.

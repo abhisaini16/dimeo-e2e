@@ -317,3 +317,23 @@ diff vs `--dry` clean.
 - **Merimbula: Abhi wants it moved fully to Shashika once Daniel (area manager) approves her request** (RQ40820 +
   adding her to schedule 2525). Then delete the Dhanesh `merimbula` entry (SITES, MON_FRI_ONLY, secret, telegram list)
   and keep `merimbula-shashika`. Until then Dhanesh's entry stays.
+
+### 2026-11-19 ~12:08am (Abhi): stop scheduling old `city-post` (Kinley) — image `dimeo-checkin:60a5a23`
+- GPO plan is Rajat then Mohammed only. The old `city-post` entry (Kinley's login) was still being planned
+  and failed every night with `no-shift-found`.
+- Planner now skips it via `DISABLED_SITES` in `planner.js` (`PLAN_SITES` is `SITES` minus that set).
+  Scripts, `jobs.js` `now-city-post-*` entries, and the secret entry are unchanged (reversible).
+- Image `australia-southeast1-docker.pkg.dev/cbr-automation-510513/dimeo/dimeo-checkin:60a5a23`
+  (Cloud Build `ed3420bc-aa7a-48d9-8c81-496f30a77852`) deployed to Cloud Run job `dimeo-checkin`.
+  There is no separate planner Cloud Run job: `dimeo-planner` / `dimeo-planner-retry` trigger the same
+  job with args `planner`, so the 3am retry will also skip `city-post`.
+- 12:05am planner had already queued tonight's tasks (old image). Deleted only
+  `city-post-checkin-2026-11-19-1823` and `city-post-checkout-2026-11-19-2103`. Did **not** re-run
+  the live planner. Tonight (Thu 19 Nov, Sydney):
+  - Rajat (`city-post-rajat`): 6:31pm in → 8:51pm out
+  - Mohammed (`city-post-mohammed`): 6:40pm in → 9:19pm out
+  - Merimbula Dhanesh (`merimbula`): 5:38pm in → 7:08pm out
+  - Merimbula Shashika (`merimbula-shashika`): 7:44pm in → 9:14pm out
+- Side effect left in place (because the planner was not re-run): Weston's check-in tonight is 9:06pm,
+  3 min later than a fresh plan without `city-post` (the old checkout had been a 3-min GLOBAL_GAP bump).
+  Tomorrow's 12:05am planner will plan without `city-post`.

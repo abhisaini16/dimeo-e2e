@@ -351,3 +351,4 @@ diff vs `--dry` clean.
   1 Dec, Rajat->Mohammed 12 min on 27 Nov). Dry-run check of 101 days (20 Nov 2026 - 28 Feb 2027): 0 violations.
 - No Dhanesh Merimbula tasks were pending in `dimeo-actions` (tonight's had already run); nothing deleted.
   Tonight's failed Shashika/Mohammed runs were NOT re-run.
+- Image `dimeo-checkin:7bbb7ee` (Cloud Build `600a9a25-2a74-4b8b-9b86-e20e67881e8a`) deployed to job `dimeo-checkin`; the 12:05am planner on Fri 20 Nov is the first to use it.

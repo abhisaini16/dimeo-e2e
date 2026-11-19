@@ -20,7 +20,10 @@ const { sendTelegramText } = require('../scripts/lib/notify');
 // scheduled by the planner. Reversible: remove from this set.
 // 2026-11-19 (Abhi): old Kinley `city-post` GPO entry finds no shift every
 // night; the live plan is Rajat then Mohammed only.
-const DISABLED_SITES = new Set(['city-post']);
+// 2026-11-19 (Abhi): Merimbula moved fully to Shashika (`merimbula-shashika`, after her
+// Bega PO session) once Daniel approved RQ40820 and DAS rostered her on schedule 2525.
+// Dhanesh's old `merimbula` entry is no longer planned (else two people check in there).
+const DISABLED_SITES = new Set(['city-post', 'merimbula']);
 const PLAN_SITES = SITES.filter((s) => !DISABLED_SITES.has(s));
 
 const PROJECT = process.env.GCP_PROJECT || 'cbr-automation-510513';
@@ -125,12 +128,30 @@ function reservedBlocks(base, acct) {
 // at no other site (no same-account gap to keep); other sites still space around him.
 const EXACT_SITES = new Set(['city-post-rajat']);
 
+// Events whose time is tied to an earlier event and must stay within a window of it
+// (2026-11-19, Abhi's rules): Merimbula on Shashika's login starts 27-34 min after her
+// Bega PO check-out and stays 90-105 min; Mohammed checks in 4-9 min after Rajat at GPO
+// and stays 139-162 min. Each starts from its anchor's FINAL time plus the schedule lib's
+// own offset (so it moves with the anchor), is then clash-spaced as usual, but if spacing
+// would push it past `max` after the anchor it stays on the lib offset instead (a <3 min
+// GLOBAL_GAP overlap with another login is acceptable; breaking the rule is not).
+const CHAINED = {
+  'merimbula-shashika:checkin': { anchor: 'bega-po:checkout', max: 34 * MIN },
+  'merimbula-shashika:checkout': { anchor: 'merimbula-shashika:checkin', max: 105 * MIN },
+  'city-post-mohammed:checkin': { anchor: 'city-post-rajat:checkin', max: 9 * MIN },
+  'city-post-mohammed:checkout': { anchor: 'city-post-mohammed:checkin', max: 162 * MIN },
+};
+
 // Pushes events (forward only) until every rule holds. Returns events with `time` final.
 function resolve(events, blocks) {
   const placed = [];
   for (const e of events.sort((a, b) => a.orig - b.orig)) {
     let t = e.orig;
     if (EXACT_SITES.has(e.site)) { e.time = t; placed.push(e); continue; }
+    const chain = CHAINED[`${e.site}:${e.action}`];
+    const anchor = chain && placed.find((p) => `${p.site}:${p.action}` === chain.anchor);
+    if (anchor) t = anchor.time + (e.orig - anchor.orig);
+    const base = t;
     for (let guard = 0; guard < 200; guard++) {
       let moved = false;
       for (const p of placed) {
@@ -142,6 +163,7 @@ function resolve(events, blocks) {
       }
       if (!moved) break;
     }
+    if (anchor && t - anchor.time > chain.max) t = base;
     e.time = t;
     placed.push(e);
   }

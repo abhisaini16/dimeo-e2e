@@ -337,3 +337,17 @@ diff vs `--dry` clean.
 - Side effect left in place (because the planner was not re-run): Weston's check-in tonight is 9:06pm,
   3 min later than a fresh plan without `city-post` (the old checkout had been a 3-min GLOBAL_GAP bump).
   Tomorrow's 12:05am planner will plan without `city-post`.
+
+### 2026-11-19 ~9:45pm (Abhi): Merimbula moved fully to Shashika; chained timing for Merimbula/Mohammed
+- Daniel approved RQ40820; DAS Manager rostered Shashika (4545) on Merimbula schedule 2525 and Mohammed (4610)
+  on GPO schedules 1864/1799. Verified read-only (login + list My Cleans cards only, no shift opened): both
+  logins work; Shashika has Merimbula cards Thu 19 Nov onward (Mon-Fri), Mohammed has Canberra GPO cards
+  Thu 19 Nov onward (incl. Sat 21 Nov 12:30pm window).
+- Dhanesh's `merimbula` entry is no longer planned: added to `DISABLED_SITES` in `planner.js` (scripts,
+  `jobs.js`, secret entry and Telegram button kept, reversible). Secret `checkin-sites` unchanged (still v21).
+- New `CHAINED` rule in `resolve()`: Merimbula (Shashika) check-in stays 27-34 min after her FINAL Bega PO
+  check-out and stays 90-105 min; Mohammed stays 4-9 min after Rajat and 139-162 min. Before this, the
+  3-min GLOBAL_GAP clash-spacing could push them out of range (e.g. Bega->Merimbula 35-36 min on 23 Nov /
+  1 Dec, Rajat->Mohammed 12 min on 27 Nov). Dry-run check of 101 days (20 Nov 2026 - 28 Feb 2027): 0 violations.
+- No Dhanesh Merimbula tasks were pending in `dimeo-actions` (tonight's had already run); nothing deleted.
+  Tonight's failed Shashika/Mohammed runs were NOT re-run.
